@@ -1,0 +1,299 @@
+src/env.ts
+  s_75d0e4774da207::t_8c38b379892c4e 31,33-34,43-44,46-48
+  s_e2b012cb19dc9c::t_d3c4b751526eba 1-3,7,11,15,19,23,27-29,41,51,53,61-75,91-97
+  s_3b65c469799ace::t_4990fb3ab0f584 36,38-40,50,54,98
+  s_e549deea0a5aac::t_5c7f9f5d9c03b2 55,57,59,80-82,84-88
+  s_e2b012cb19dc9c::t_fd3fe343dde7e4 76-77,79,89-90
+  h_d6a04d82b61d5e 4-6,8-10,12-14,16-18,20-22,24-26,30,32,35,42,45,49,56,58,60
+  s_3df15f568bf1e6::t_265e08a44cd02b 52
+  s_3df15f568bf1e6::t_e1ff36430f1ed2 83
+CHANGELOG.md
+  s_740c485e48e3da::t_c909a0c436c69e 1-21
+.github/pull_request_template.md
+  s_740c485e48e3da::t_c18298bd38dcc6 1-18
+tsconfig.test.json
+  s_740c485e48e3da::t_45cc79a8a51145 1-11
+.github/workflows/main.yml
+  s_740c485e48e3da::t_6a910d69cbad60 1-63
+.github/actionlint-matcher.json
+  s_740c485e48e3da::t_78331b1776e4f7 1-16
+src/runner.test.ts
+  s_3df15f568bf1e6::t_91a56d8a883379 131,135
+  s_75d0e4774da207::t_af0512b432a386 208,210,231,233-234
+  s_75d0e4774da207::t_0d91e47505f9a6 273,275
+  s_75d0e4774da207::t_6b556e917f4b97 111,113
+  s_3df15f568bf1e6::t_6d0cb742ee0c18 148,152
+  s_740c485e48e3da::t_338f92591ba2e8 3-4
+  s_740c485e48e3da::t_69fcf55a17ff0f 6,15-16,18-25,35-36,44-60,62-80,82-94,97-109,115-119,121-124,126-130,132-134,136,138-140,142-144,147,149-151,153-158,161-169,173-180,182-189,193,195-206,214-223,225-229,237-247,249-253,255-265,267-271,280-291
+  h_d6a04d82b61d5e 26,28,31,37,39,42-43,61,81,95-96,110,112,114,120,159-160,170-172,181,190-192,207,209,211,213,224,230,232,235-236,248,266,272,274,276,278
+  s_3df15f568bf1e6::t_2edbca2cb780c1 137,141
+  s_75d0e4774da207::t_0ccac2c283d12a 27,29-30,38,40-41
+  s_3df15f568bf1e6::t_d27ccd58d90b7b 32,34
+  s_740c485e48e3da::t_3bac399c1ab6c0 1
+  s_3df15f568bf1e6::t_cb2f0cffa0a6a9 7-14
+  s_3df15f568bf1e6::t_e6a92adeec2191 194
+  s_3df15f568bf1e6::t_2c9d37e55a382a 212
+  s_3df15f568bf1e6::t_55cefbbf00adb3 277,279
+src/telemetry.test.ts
+  h_d6a04d82b61d5e 11,15,28,30,32,50,52,54,63,65,68,74,76,78,96,98,101,128,130,132,136,138,141-142,183,207,232,281,283,285,287
+  s_3df15f568bf1e6::t_35733eef868c7e 114-120
+  s_3df15f568bf1e6::t_a9d3cd19b599ec 152
+  s_740c485e48e3da::t_bfb239932b0d99 4-10,12-14,16-27,33-49,56-62,70-73,79-95,103-112,121-127,134-135,143-151,153-160,162-164,166-168,170-173,175-182,184-198,200-206,208-221,223-231,233-241,243-277,279-280,288-316,318-337,339-362,364-376,378-384,386-394,396-410,412-418,420-422,424-430,432-434
+  s_3df15f568bf1e6::t_dd981b0b83cd63 113
+  s_3df15f568bf1e6::t_f2a25403c13a6a 102
+  s_3df15f568bf1e6::t_409bb190ad730b 161,165
+  s_3df15f568bf1e6::t_527b258b9fe945 169
+  s_740c485e48e3da::t_2b717a10e8b32e 1
+  s_75d0e4774da207::t_d651e289d8fce5 97,99-100
+  s_740c485e48e3da::t_fb1897b3497e82 174,199,222,242,278,317,338,363,385,411
+  s_3df15f568bf1e6::t_d3022f478fac35 419,423
+  s_75d0e4774da207::t_da66cdfc65cfc4 282,284
+  s_75d0e4774da207::t_6bb633772ea7b2 64,66-67
+  s_75d0e4774da207::t_629a008e5c1dc5 75,77
+  s_75d0e4774da207::t_864aa4619ea17b 29,31
+  s_75d0e4774da207::t_f9d34637bb54cb 129,131,137,139-140
+  s_3df15f568bf1e6::t_52d20e509e5455 133
+  s_75d0e4774da207::t_58f97226d78daf 51,53
+  s_3df15f568bf1e6::t_678c32dc5f5736 55
+  s_3df15f568bf1e6::t_6faa0b0f98a081 286
+  s_740c485e48e3da::t_74b8be394a42d0 3
+  s_3df15f568bf1e6::t_30401d66b20280 69
+  s_3df15f568bf1e6::t_d1901f8af9a2d0 395
+tsconfig.json
+  s_e2b012cb19dc9c::t_18cda1df51e577 1-3,5,11,15,17
+  s_740c485e48e3da::t_a3a35b439870b4 12
+  s_740c485e48e3da::t_1a4fa4e59d07b9 4,6-10,13-14,16
+package.json
+  s_e2b012cb19dc9c::t_18cda1df51e577 1-4,22-23,34,39,53-54,62-63,93-94,105-106
+  s_740c485e48e3da::t_2d19c4fab7f0eb 17
+  s_3b65c469799ace::t_471dc0f295d11e 55-61
+  s_740c485e48e3da::t_29bd7d5e75bfea 5-13,15-16,18-21,24-33,35-38,40-52,64-92,95-99,104
+  s_740c485e48e3da::t_f0ad5693389d2d 100-103
+.editorconfig
+  s_740c485e48e3da::t_cd9e0fc9afc315 1-9
+typedoc.json
+  s_740c485e48e3da::t_8a308d274a5d22 1-6
+eslint.config.mjs
+  s_740c485e48e3da::t_17301c8a980eda 1-46
+.github/workflows/publish-release.yml
+  s_740c485e48e3da::t_eda7e0d42881aa 1-25
+src/types.ts
+  s_bebad74a851a51::t_0c9dbb786b08be 200
+  s_0db36e1d7dde29::t_56fa5f92e858ab 97-98,114
+  s_e2b012cb19dc9c::t_d3c4b751526eba 1-29,31-93,102-110,115-132,140-176,192,204-235
+  s_740c485e48e3da::t_3d8fc16bc3cfd8 180-188,196
+  s_e2b012cb19dc9c::t_fd3fe343dde7e4 136
+vitest.config.mts
+  s_740c485e48e3da::t_4b71b9ea654745 1-19,21,24-31
+  s_740c485e48e3da::t_087d4a7736fbca 20,23
+src/telemetry.ts
+  s_e549deea0a5aac::t_95d3001b9556a0 169
+  s_9687f0547f73c1::t_3ac87323c07939 106,116-118,120-123,133-136,138-139,141-146,175
+  s_740c485e48e3da::t_c294f698a359fa 242,244-254
+  s_90b8a53414ef9e::t_b4e285c0c71741 156-163
+  s_3b65c469799ace::t_4990fb3ab0f584 56-58,64,70,80-81,282
+  s_0db36e1d7dde29::t_c11aebf59164c6 234,257,263-265,267-271,273-277
+  s_e2b012cb19dc9c::t_fd3fe343dde7e4 8,151-155,166-168,237-241,255,278
+  s_75d0e4774da207::t_7f5cb3e5d3d2a8 109,111-114
+  s_75d0e4774da207::t_e4d443a949f965 125,127-128
+  h_d6a04d82b61d5e 19-21,23-25,29-31,33-35,51,53,55,59,61,63,65,67,69,71,73,77,83-85,87-89,91-93,95-97,99-101,108,110,115,124,126,129,147,180,182,185,198-200,207-209,215,222,224,228,256,258,260,262
+  s_9687f0547f73c1::t_c14090f0faab8e 12
+  s_0db36e1d7dde29::t_d3f0bdc3e76be6 50,78-79
+  s_75d0e4774da207::t_24b1ae3ae8cf93 52,54,60,62,66,68,72,74-76
+  s_e2b012cb19dc9c::t_d3c4b751526eba 1,9-11,13-15,17-18,32,36-37,39-41,82,149-150,164-165,170-173,195-197,206,221,233,235-236,279-281
+  s_3df15f568bf1e6::t_b2eef459529872 229-232
+  s_3df15f568bf1e6::t_f1191d39bf184e 210
+  s_0db36e1d7dde29::t_241a1601a4026e 2-4,6-7,22,26-28,38
+  s_75d0e4774da207::t_0be0704d71ea38 259,261
+  s_bebad74a851a51::t_b950a72cb9cc11 86,90,94,98,102-105,107,130,132,140,148,174,176-179,186,188-194,202-205,211-214,216-218,220
+  s_75d0e4774da207::t_efd047e538ad77 181,183-184
+  s_de4b5f8b835415::t_ebed3b9eb36f0b 219
+  s_75d0e4774da207::t_65814eb1ff6779 42-49
+  s_3df15f568bf1e6::t_061f1d70f39693 201
+  s_75d0e4774da207::t_7beac521151336 223,225-227
+src/sdk-loader.ts
+  s_bebad74a851a51::t_7e5d8fe991b546 1,6-7,15-18,21,29,43-44
+  h_d6a04d82b61d5e 8,10,13-14,19-20,24,26,28
+  s_e2b012cb19dc9c::t_d3c4b751526eba 4-5,23,42
+  s_de4b5f8b835415::t_ff6790b1e95cce 30-41
+  s_3b65c469799ace::t_4990fb3ab0f584 22,45
+  s_75d0e4774da207::t_c4e5b0eea06fb0 9,11-12,25,27
+.gitignore
+  s_740c485e48e3da::t_b14040f3953e36 1,4-6,8-13
+  s_3b65c469799ace::t_471dc0f295d11e 2-3,7
+tsconfig.build.json
+  s_740c485e48e3da::t_80a76f754ba166 1-24
+.yarnrc.yml
+  s_740c485e48e3da::t_c2d8edfffe4d19 18-20,27-29
+  s_740c485e48e3da::t_1c7907ad0ff025 1-17,25-26
+  s_740c485e48e3da::t_6c431cc54fed2e 21-24
+.github/workflows/build-lint-test.yml
+  s_740c485e48e3da::t_0ca769968f961a 1-73
+.depcheckrc.json
+  s_740c485e48e3da::t_5abad04f12a690 1-20
+.github/dependabot.yml
+  s_740c485e48e3da::t_f676d86d0b200c 1-23
+src/index.ts
+  s_e2b012cb19dc9c::t_18cda1df51e577 1,7-9,11-12,14-17
+  s_e549deea0a5aac::t_5e7a8564c6ff98 10
+  s_0db36e1d7dde29::t_b836138db8d798 13
+  s_58909d7e6b5eac::t_d6a8458259f80d 2-4,6
+.github/actionlint.yml
+  s_740c485e48e3da::t_5248427bd2a46c 1-2
+.nvmrc
+  s_740c485e48e3da::t_4175b121429334 1
+src/errors.ts
+  s_e2b012cb19dc9c::t_d3c4b751526eba 4,11-16,20,29-31
+  s_e549deea0a5aac::t_e7fff9244647a0 27-28
+  s_75d0e4774da207::t_d746a9b9181432 2,6-9,18,22-25,34,38-40
+  s_58909d7e6b5eac::t_2b5cbaf3736d76 32,36,42-46
+README.md
+  s_e2b012cb19dc9c::t_66459ffb233f31 1-26,57-146
+  s_514ac34762b32a::t_a463afb092e414 27-31,33-56
+src/runner.ts
+  s_75d0e4774da207::t_12919625ad4cd0 73-79
+  s_75d0e4774da207::t_b2a33dc47f65e7 110-113
+  s_0db36e1d7dde29::t_235330d09921cc 131-133,158-163,165,175
+  s_bebad74a851a51::t_2eca496ef80290 81-86,99-100
+  s_0db36e1d7dde29::t_a5591c60075943 11
+  s_58909d7e6b5eac::t_4a95ae1a053416 148-157,167-168
+  s_e2b012cb19dc9c::t_d3c4b751526eba 1,3-10,12-14,35-40,42,54-59,61,71,88-98,101-106,108,116,119-123,130,134-141,177-179,181-182
+  s_0db36e1d7dde29::t_583610962494a5 117-118
+  s_75d0e4774da207::t_b43700f8e9be1c 16-18,25-29,44-48,63-66
+  s_58909d7e6b5eac::t_31568354e8a233 2
+  s_bebad74a851a51::t_53940b0ae8616b 142-147,170-174,176
+  s_75d0e4774da207::t_0cfb08b97091d2 125-128
+  s_e2b012cb19dc9c::t_fd3fe343dde7e4 87
+  s_3b65c469799ace::t_4990fb3ab0f584 20-23,31-32,34,41,50-51,53,60,68-70,107,115,183
+.oxfmtrc.json
+  s_740c485e48e3da::t_1ade126cfbd075 1-17
+.github/workflows/create-release-pr.yml
+  s_740c485e48e3da::t_b8f2ad1dd216cf 1-38
+.gitattributes
+  s_740c485e48e3da::t_44cbcf270d0632 1-5
+.github/workflows/publish-docs.yml
+  s_740c485e48e3da::t_4388f653b54985 1-20
+.github/CODEOWNERS
+  s_740c485e48e3da::t_f330b08781793e 1-2
+scripts/prepack.sh
+  s_740c485e48e3da::t_bdf4635dc6cded 1-10
+.yarn/plugins/@yarnpkg/plugin-allow-scripts.cjs
+  s_740c485e48e3da::t_c2d8edfffe4d19 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "3b0da17b53ec4c28ff11073a04943d7ac9db63cf",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_0db36e1d7dde29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e7f684f1ffeqgDQ6JfzIVHznX",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_3b65c469799ace": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e8ee446affed9lS2OYKDoE6Rf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_3df15f568bf1e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e6e18750ffe0BXh178Q0pZX7o",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_514ac34762b32a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e7f12419ffeAe3kEnMjzJIE6u",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_58909d7e6b5eac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e804a1adffe51vEmbWOV5feSG",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_740c485e48e3da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e6feee5effeVj9k1cGdkVUj4h",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_75d0e4774da207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e6ea1c7fffe9QdO2Pj7s4XOnj",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_90b8a53414ef9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e8101c48ffeJY3TxC2H1Iy7UZ",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_9687f0547f73c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e81ab2c5ffeOQi5g80xkz65aM",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_bebad74a851a51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e860bf6bffeDq1cQcdQGaB7lt",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_de4b5f8b835415": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e7fe999cffe1WnUTjFNrqXZUI",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_e2b012cb19dc9c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e8e57dd0ffeAxM71529XPTT43",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_e549deea0a5aac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e83f02e6ffeKlhKgykr5UEa5A",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
