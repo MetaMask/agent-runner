@@ -1,0 +1,106 @@
+{
+  "name": "@metamask/agent-runner",
+  "version": "0.1.0",
+  "description": "Reusable Claude Agent SDK runner with Langfuse telemetry lifecycle support.",
+  "homepage": "https://github.com/MetaMask/agent-runner#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/agent-runner/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/agent-runner.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "ts-bridge --project tsconfig.build.json --clean",
+    "build:docs": "typedoc",
+    "lint": "yarn lint:eslint && yarn lint:misc --check && yarn lint:dependencies --check && yarn lint:changelog",
+    "lint:changelog": "auto-changelog validate --formatter oxfmt",
+    "lint:dependencies": "depcheck && yarn dedupe --check",
+    "lint:dependencies:fix": "depcheck && yarn dedupe",
+    "lint:eslint": "eslint .",
+    "lint:fix": "yarn lint:eslint --fix && yarn lint:misc --write && yarn lint:dependencies:fix && yarn lint:changelog --fix",
+    "lint:misc": "oxfmt --ignore-path .gitignore",
+    "prepack": "./scripts/prepack.sh",
+    "test": "vitest && attw --pack",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.138",
+    "@arizeai/openinference-instrumentation-claude-agent-sdk": "^0.2.3",
+    "@langfuse/otel": "^5.3.0",
+    "@langfuse/tracing": "^5.3.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/resources": "^2.7.1",
+    "@opentelemetry/sdk-node": "^0.217.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.3",
+    "@lavamoat/allow-scripts": "^3.0.4",
+    "@lavamoat/preinstall-always-fail": "^2.0.0",
+    "@metamask/auto-changelog": "^6.1.0",
+    "@metamask/eslint-config": "^15.0.0",
+    "@metamask/eslint-config-nodejs": "^15.0.0",
+    "@metamask/eslint-config-typescript": "^15.0.0",
+    "@metamask/eslint-config-vitest": "^15.0.0",
+    "@ts-bridge/cli": "^0.6.3",
+    "@types/node": "^18.18",
+    "@typescript-eslint/utils": "^8.6.0",
+    "@vitest/coverage-istanbul": "^4.1.4",
+    "@vitest/eslint-plugin": "^1.1.4",
+    "depcheck": "^1.4.3",
+    "eslint": "^9.11.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint-plugin-import-x": "^4.3.0",
+    "eslint-plugin-jsdoc": "^50.2.4",
+    "eslint-plugin-n": "^17.10.3",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.1.0",
+    "oxfmt": "^0.45.0",
+    "ts-node": "^10.7.0",
+    "typedoc": "^0.26.11",
+    "typescript": "~5.7.3",
+    "typescript-eslint": "^8.48.1",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": "^20 || ^22 || >=24"
+  },
+  "packageManager": "yarn@4.14.1",
+  "lavamoat": {
+    "allowScripts": {
+      "@lavamoat/preinstall-always-fail": false,
+      "@langfuse/otel>@opentelemetry/exporter-trace-otlp-http>@opentelemetry/otlp-transformer>protobufjs": false,
+      "@opentelemetry/sdk-node>@opentelemetry/exporter-logs-otlp-grpc>@grpc/grpc-js>@grpc/proto-loader>protobufjs": false,
+      "eslint-plugin-import-x>unrs-resolver": false
+    }
+  }
+}

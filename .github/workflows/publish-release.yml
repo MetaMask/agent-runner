@@ -1,0 +1,25 @@
+name: Publish Release
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: MetaMask/action-checkout-and-setup@v3
+      - run: yarn build
+      - name: Dry-run publish
+        run: npm publish --dry-run
+      - name: Publish to npm
+        uses: MetaMask/action-npm-publish@v5
+        with:
+          npm-token: ${{ secrets.NPM_TOKEN }}
+      - name: Publish docs
+        uses: MetaMask/action-publish-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

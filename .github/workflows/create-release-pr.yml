@@ -1,0 +1,38 @@
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The base branch for the release'
+        required: true
+        default: 'main'
+      release-type:
+        description: 'The release type (major, minor, or patch)'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+      release-version:
+        description: 'A specific version to release (overrides release-type)'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: MetaMask/action-checkout-and-setup@v3
+      - uses: MetaMask/action-create-release-pr@v5
+        with:
+          base-branch: ${{ github.event.inputs.base-branch }}
+          release-type: ${{ github.event.inputs.release-type }}
+          release-version: ${{ github.event.inputs.release-version }}
+          formatter: 'oxfmt'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

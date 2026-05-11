@@ -1,0 +1,13 @@
+.DS_Store
+dist/
+coverage/
+docs/
+node_modules/
+*.tsbuildinfo
+*.log
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
