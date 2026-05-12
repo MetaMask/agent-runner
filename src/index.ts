@@ -1,3 +1,4 @@
+export { formatMessage } from './formatter.js';
 export { createAgentRunner } from './runner.js';
 export {
   AgentRunnerError,

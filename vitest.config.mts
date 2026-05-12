@@ -17,10 +17,10 @@ export default defineConfig({
       exclude: ['src/**/*.test-d.ts'],
       thresholds: {
         autoUpdate: true,
-        branches: 89.41,
+        branches: 91.62,
         functions: 100,
-        lines: 95.53,
-        statements: 95.53,
+        lines: 97.96,
+        statements: 97.96,
       },
     },
     typecheck: {
