@@ -2,63 +2,73 @@ import { describe, expect, it } from 'vitest';
 
 import { MessageHandlerError, TelemetryConfigurationError } from './errors.js';
 import { createAgentRunner } from './runner.js';
-import type { ClaudeSdkQueryModule, SdkMessage } from './types.js';
+import type { AgentMessage, ProviderAdapter } from './types.js';
 
-/** Mock SDK with captured query call arguments. */
-type MockSdk = {
-  /** The mock SDK module. */
-  sdkModule: ClaudeSdkQueryModule;
-  /** Recorded query call arguments. */
-  queryCalls: unknown[];
+/** Mock adapter with captured run call arguments. */
+type MockAdapter = {
+  /** The mock provider adapter. */
+  adapter: ProviderAdapter;
+  /** Recorded adapter run call arguments. */
+  runCalls: unknown[];
 };
 
-const userMessage = {
-  type: 'user',
-  message: { role: 'user', content: 'hello' },
-} as SdkMessage;
+const initMessage: AgentMessage = {
+  type: 'init',
+  sessionId: 'session-123',
+  model: 'mock-model',
+  tools: [],
+};
+const generationMessage: AgentMessage = {
+  type: 'generation',
+  model: 'mock-model',
+  text: 'hello',
+  toolCalls: [],
+  usage: { inputTokens: 1, outputTokens: 1 },
+  stopReason: null,
+};
 const resultMessage = {
   type: 'result',
-  subtype: 'success',
-  session_id: 'session-123',
-  total_cost_usd: 0.25,
-} as SdkMessage;
+  success: true,
+  costUsd: 0.25,
+} satisfies AgentMessage;
 
 /**
- * Creates a mock SDK module for testing.
+ * Creates a mock provider adapter for testing.
  *
- * @param messages - Messages to yield from the mock query generator.
- * @returns The mock SDK module and recorded query calls.
+ * @param messages - Messages to yield from the mock run generator.
+ * @returns The mock adapter and recorded run calls.
  */
-const createMockSdk = (
-  messages: SdkMessage[] = [userMessage, resultMessage],
-): MockSdk => {
-  const queryCalls: unknown[] = [];
-  const sdkModule: ClaudeSdkQueryModule = {
+const createMockAdapter = (
+  messages: AgentMessage[] = [initMessage, generationMessage, resultMessage],
+): MockAdapter => {
+  const runCalls: unknown[] = [];
+  const adapter: ProviderAdapter = {
+    name: 'mock',
     /**
-     * Mock query generator.
+     * Mock run generator.
      *
-     * @param input - The query input.
-     * @yields SDK messages from the provided array.
+     * @param config - The run config.
+     * @yields Agent messages from the provided array.
      */
-    async *query(input: unknown): AsyncGenerator<SdkMessage> {
-      queryCalls.push(input);
+    async *run(config): AsyncGenerator<AgentMessage> {
+      runCalls.push(config);
       for (const message of messages) {
         yield message;
       }
     },
-  } as ClaudeSdkQueryModule;
+  };
 
-  return { sdkModule, queryCalls };
+  return { adapter, runCalls };
 };
 
 describe('createAgentRunner', () => {
   it('defaults to isolated settingSources', async () => {
-    const { sdkModule, queryCalls } = createMockSdk();
-    const runner = createAgentRunner({ sdkModule });
+    const { adapter, runCalls } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
 
     await runner.runAgent({ prompt: 'test prompt' });
 
-    expect(queryCalls).toStrictEqual([
+    expect(runCalls).toStrictEqual([
       {
         prompt: 'test prompt',
         options: { settingSources: [] },
@@ -67,9 +77,9 @@ describe('createAgentRunner', () => {
   });
 
   it('lets caller override default settings', async () => {
-    const { sdkModule, queryCalls } = createMockSdk();
+    const { adapter, runCalls } = createMockAdapter();
     const runner = createAgentRunner({
-      sdkModule,
+      adapter,
       defaultOptions: { maxTurns: 2, settingSources: [] },
     });
 
@@ -78,7 +88,7 @@ describe('createAgentRunner', () => {
       options: { maxTurns: 4, settingSources: ['user'] },
     });
 
-    expect(queryCalls).toStrictEqual([
+    expect(runCalls).toStrictEqual([
       {
         prompt: 'test prompt',
         options: { maxTurns: 4, settingSources: ['user'] },
@@ -87,37 +97,45 @@ describe('createAgentRunner', () => {
   });
 
   it('aggregates messages and extracts result metadata', async () => {
-    const { sdkModule } = createMockSdk();
-    const runner = createAgentRunner({ sdkModule });
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({ prompt: 'test prompt' });
 
-    expect(result.messages).toStrictEqual([userMessage, resultMessage]);
+    expect(result.messages).toStrictEqual([
+      initMessage,
+      generationMessage,
+      resultMessage,
+    ]);
     expect(result.resultMessage).toStrictEqual(resultMessage);
     expect(result.sessionId).toBe('session-123');
     expect(result.totalCostUsd).toBe(0.25);
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
-    expect(result.metadata.messageCount).toBe(2);
+    expect(result.metadata.messageCount).toBe(3);
   });
 
   it('streams each collected message through onMessage', async () => {
-    const { sdkModule } = createMockSdk();
-    const runner = createAgentRunner({ sdkModule });
-    const streamed: SdkMessage[] = [];
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
+    const streamed: AgentMessage[] = [];
 
     await runner.runAgent({
       prompt: 'test prompt',
       /**
        * Collects streamed messages.
        *
-       * @param message - The streamed SDK message.
+       * @param message - The streamed agent message.
        */
       onMessage: (message) => {
         streamed.push(message);
       },
     });
 
-    expect(streamed).toStrictEqual([userMessage, resultMessage]);
+    expect(streamed).toStrictEqual([
+      initMessage,
+      generationMessage,
+      resultMessage,
+    ]);
   });
 
   it('does not require Langfuse env vars when telemetry is disabled', () => {
@@ -161,8 +179,8 @@ describe('createAgentRunner', () => {
   });
 
   it('returns partial result with MessageHandlerError when onMessage throws an Error', async () => {
-    const { sdkModule } = createMockSdk();
-    const runner = createAgentRunner({ sdkModule });
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
     const handlerError = new Error('handler broke');
 
     const result = await runner.runAgent({
@@ -178,12 +196,12 @@ describe('createAgentRunner', () => {
     expect(result.isPartial).toBe(true);
     expect(result.error).toBeInstanceOf(MessageHandlerError);
     expect(result.error?.cause).toBe(handlerError);
-    expect(result.messages).toStrictEqual([userMessage]);
+    expect(result.messages).toStrictEqual([initMessage]);
   });
 
   it('wraps non-Error values thrown by onMessage in MessageHandlerError', async () => {
-    const { sdkModule } = createMockSdk();
-    const runner = createAgentRunner({ sdkModule });
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({
       prompt: 'test prompt',
@@ -201,60 +219,66 @@ describe('createAgentRunner', () => {
     expect((result.error?.cause as Error).message).toBe('string failure');
   });
 
-  it('returns partial result with SDK error when query throws', async () => {
-    const sdkError = new Error('SDK connection failed');
-    const sdkModule = {
+  it('returns partial result with adapter error when run throws', async () => {
+    const adapterError = new Error('Adapter connection failed');
+    const adapter: ProviderAdapter = {
+      name: 'mock',
       /**
-       * Mock query that throws immediately.
+       * Mock run that throws immediately.
        *
-       * @param _input - The query input (unused).
+       * @param _config - The run config (unused).
        */
       // eslint-disable-next-line require-yield
-      async *query(_input: unknown): AsyncGenerator<SdkMessage> {
-        throw sdkError;
+      async *run(_config): AsyncGenerator<AgentMessage> {
+        throw adapterError;
       },
-    } as ClaudeSdkQueryModule;
-    const runner = createAgentRunner({ sdkModule });
+    };
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({ prompt: 'test prompt' });
 
     expect(result.isPartial).toBe(true);
-    expect(result.error).toBe(sdkError);
+    expect(result.error).toBe(adapterError);
     expect(result.error).not.toBeInstanceOf(MessageHandlerError);
     expect(result.messages).toStrictEqual([]);
   });
 
-  it('returns partial result with SDK error when query throws mid-stream', async () => {
-    const sdkError = new Error('SDK mid-stream failure');
-    const sdkModule = {
+  it('returns partial result with adapter error when run throws mid-stream', async () => {
+    const adapterError = new Error('Adapter mid-stream failure');
+    const adapter: ProviderAdapter = {
+      name: 'mock',
       /**
-       * Mock query that yields then throws.
+       * Mock run that yields then throws.
        *
-       * @param _input - The query input (unused).
-       * @yields A single user message before throwing.
+       * @param _config - The run config (unused).
+       * @yields A single init message before throwing.
        */
-      async *query(_input: unknown): AsyncGenerator<SdkMessage> {
-        yield userMessage;
-        throw sdkError;
+      async *run(_config): AsyncGenerator<AgentMessage> {
+        yield initMessage;
+        throw adapterError;
       },
-    } as ClaudeSdkQueryModule;
-    const runner = createAgentRunner({ sdkModule });
+    };
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({ prompt: 'test prompt' });
 
     expect(result.isPartial).toBe(true);
-    expect(result.error).toBe(sdkError);
+    expect(result.error).toBe(adapterError);
     expect(result.error).not.toBeInstanceOf(MessageHandlerError);
-    expect(result.messages).toStrictEqual([userMessage]);
+    expect(result.messages).toStrictEqual([initMessage]);
   });
 
   it('returns success with no resultMessage when stream has no result message', async () => {
-    const nonResultMessage = {
-      type: 'assistant',
-      content: 'hello',
-    } as unknown as SdkMessage;
-    const { sdkModule } = createMockSdk([userMessage, nonResultMessage]);
-    const runner = createAgentRunner({ sdkModule });
+    const nonResultMessage: AgentMessage = {
+      type: 'generation',
+      model: 'mock-model',
+      text: 'hello without result',
+      toolCalls: [],
+      usage: { inputTokens: 1, outputTokens: 1 },
+      stopReason: null,
+    };
+    const { adapter } = createMockAdapter([nonResultMessage]);
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({ prompt: 'test prompt' });
 
@@ -263,29 +287,30 @@ describe('createAgentRunner', () => {
     expect(result.resultMessage).toBeUndefined();
     expect(result.sessionId).toBeUndefined();
     expect(result.totalCostUsd).toBeUndefined();
-    expect(result.messages).toStrictEqual([userMessage, nonResultMessage]);
-    expect(result.metadata.messageCount).toBe(2);
+    expect(result.messages).toStrictEqual([nonResultMessage]);
+    expect(result.metadata.messageCount).toBe(1);
   });
 
-  it('wraps non-Error values thrown by query in AgentRunnerError', async () => {
-    const sdkModule = {
+  it('wraps non-Error values thrown by adapter in AgentRunnerError', async () => {
+    const adapter: ProviderAdapter = {
+      name: 'mock',
       /**
-       * Mock query that throws a non-Error value.
+       * Mock run that throws a non-Error value.
        *
-       * @param _input - The query input (unused).
+       * @param _config - The run config (unused).
        */
       // eslint-disable-next-line require-yield
-      async *query(_input: unknown): AsyncGenerator<SdkMessage> {
+      async *run(_config): AsyncGenerator<AgentMessage> {
         // eslint-disable-next-line @typescript-eslint/only-throw-error
-        throw 'raw string SDK error';
+        throw 'raw string adapter error';
       },
-    } as ClaudeSdkQueryModule;
-    const runner = createAgentRunner({ sdkModule });
+    };
+    const runner = createAgentRunner({ adapter });
 
     const result = await runner.runAgent({ prompt: 'test prompt' });
 
     expect(result.isPartial).toBe(true);
     expect(result.error).not.toBeInstanceOf(MessageHandlerError);
-    expect(result.error?.message).toBe('raw string SDK error');
+    expect(result.error?.message).toBe('raw string adapter error');
   });
 });

@@ -1,61 +1,34 @@
 import { LangfuseSpanProcessor } from '@langfuse/otel';
-import {
-  propagateAttributes,
-  startActiveObservation,
-  updateActiveObservation,
-} from '@langfuse/tracing';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
 import { resolveTelemetryConfig } from './env.js';
 import { TelemetryConfigurationError } from './errors.js';
-import type {
-  AgentRunTelemetryAttributes,
-  TelemetryConfig,
-  TelemetryLifecycle,
-} from './types.js';
+import { setLangfuseProcessor } from './tracing.js';
+import type { TelemetryConfig, TelemetryLifecycle } from './types.js';
 
 /**
- *
- */
-export type ObservationContext = {
-  /**
-   *
-   */
-  recordError: (error: Error) => void;
-};
-
-/**
- *
+ * Extended telemetry lifecycle with redaction support.
  */
 export type TelemetryController = TelemetryLifecycle & {
   /**
-   *
+   * Whether redaction is enabled.
    */
-  runWithObservation: <Result>(
-    attributes: AgentRunTelemetryAttributes | undefined,
-    callback: (observation: ObservationContext) => Promise<Result>,
-  ) => Promise<Result>;
-};
-
-const noopObservation: ObservationContext = {
-  /**
-   * No-op error recorder.
-   *
-   * @returns undefined.
-   */
-  recordError: () => undefined,
+  redact: boolean;
 };
 
 /**
  * Creates a no-op telemetry controller when telemetry is disabled.
  *
+ * @param config - Optional telemetry configuration.
  * @returns A telemetry controller that performs no operations.
  */
-function noopTelemetryController(): TelemetryController {
+function noopTelemetryController(
+  config?: TelemetryConfig,
+): TelemetryController {
   return {
     enabled: false,
+    redact: config?.redact ?? false,
     /**
      * No-op flush.
      *
@@ -68,37 +41,20 @@ function noopTelemetryController(): TelemetryController {
      * @returns A resolved promise.
      */
     shutdown: async () => undefined,
-    /**
-     * Passes through to the callback without observation.
-     *
-     * @param _attributes - Telemetry attributes (ignored).
-     * @param callback - The callback to invoke.
-     * @returns The callback result.
-     */
-    runWithObservation: async (_attributes, callback) =>
-      callback(noopObservation),
   };
 }
 
 /**
- *
+ * Shared OTel/Langfuse infrastructure reused across runners with matching config.
  */
 type SharedTelemetryInfra = {
-  /**
-   *
-   */
+  /** The OpenTelemetry Node SDK instance. */
   sdk: NodeSDK;
-  /**
-   *
-   */
+  /** The Langfuse span processor attached to the SDK. */
   spanProcessor: LangfuseSpanProcessor;
-  /**
-   *
-   */
+  /** Number of active runners sharing this infrastructure. */
   refCount: number;
-  /**
-   *
-   */
+  /** Whether the infrastructure has been shut down. */
   isShutdown: boolean;
 };
 
@@ -187,16 +143,18 @@ export function createTelemetryController(
   config: TelemetryConfig | undefined,
 ): TelemetryController {
   if (config?.mode !== 'enabled') {
-    return noopTelemetryController();
+    return noopTelemetryController(config);
   }
 
   const infra = acquireTelemetryInfra(config);
+  setLangfuseProcessor(infra.spanProcessor);
   let isShutdown = false;
 
   return {
     enabled: true,
+    redact: config.redact ?? false,
     /**
-     *
+     * Force-flushes pending spans to the Langfuse backend.
      */
     flush: async (): Promise<void> => {
       if (isShutdown) {
@@ -205,7 +163,7 @@ export function createTelemetryController(
       await infra.spanProcessor.forceFlush();
     },
     /**
-     *
+     * Decrements the shared infra ref count and shuts down when zero.
      */
     shutdown: async (): Promise<void> => {
       if (isShutdown) {
@@ -216,67 +174,10 @@ export function createTelemetryController(
       if (infra.refCount <= 0) {
         infra.isShutdown = true;
         sharedInfra = undefined;
+        sharedConfigKey = undefined;
+        setLangfuseProcessor(undefined);
         await infra.sdk.shutdown();
       }
-    },
-    /**
-     * Runs a callback within a Langfuse observation span.
-     *
-     * @param attributes - Telemetry attributes for the trace.
-     * @param callback - The callback to invoke within the observation.
-     * @returns The callback result.
-     */
-    runWithObservation: async <Result>(
-      attributes: AgentRunTelemetryAttributes | undefined,
-      callback: (observation: ObservationContext) => Promise<Result>,
-    ): Promise<Result> => {
-      if (!attributes) {
-        return callback(noopObservation);
-      }
-
-      return startActiveObservation(
-        attributes.traceName ?? 'agent-run',
-        async () =>
-          propagateAttributes(
-            {
-              ...(attributes.userId !== undefined && {
-                userId: attributes.userId,
-              }),
-              ...(attributes.sessionId !== undefined && {
-                sessionId: attributes.sessionId,
-              }),
-              ...(attributes.metadata !== undefined && {
-                metadata: attributes.metadata,
-              }),
-              ...(attributes.tags !== undefined && { tags: attributes.tags }),
-              ...(attributes.version !== undefined && {
-                version: attributes.version,
-              }),
-            },
-            async () =>
-              callback({
-                /**
-                 * Records an error on the active observation and span.
-                 *
-                 * @param error - The error to record.
-                 */
-                recordError: (error: Error) => {
-                  updateActiveObservation({
-                    level: 'ERROR',
-                    statusMessage: error.message,
-                  });
-                  const activeSpan = trace.getActiveSpan();
-                  if (activeSpan) {
-                    activeSpan.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: error.message,
-                    });
-                    activeSpan.recordException(error);
-                  }
-                },
-              }),
-          ),
-      );
     },
   };
 }

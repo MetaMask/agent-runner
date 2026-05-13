@@ -6,13 +6,15 @@ export {
   TelemetryConfigurationError,
 } from './errors.js';
 export type {
+  AgentMessage,
   AgentRunOptions,
   AgentRunResult,
   AgentRunTelemetryAttributes,
   AgentRunner,
   AgentRunnerConfig,
-  ClaudeSdkQueryModule,
   RunnerMessageHandler,
   TelemetryConfig,
   TelemetryLifecycle,
+  TokenUsage,
+  ToolCall,
 } from './types.js';

@@ -2,28 +2,18 @@ import { TelemetryConfigurationError } from './errors.js';
 import type { TelemetryConfig } from './types.js';
 
 /**
- *
+ * Fully resolved Langfuse telemetry configuration with all required fields.
  */
 export type ResolvedTelemetryConfig = {
-  /**
-   *
-   */
+  /** Langfuse public key for authentication. */
   publicKey: string;
-  /**
-   *
-   */
+  /** Langfuse secret key for authentication. */
   secretKey: string;
-  /**
-   *
-   */
+  /** Langfuse API base URL. */
   baseUrl: string;
-  /**
-   *
-   */
+  /** OpenTelemetry service name for resource tagging. */
   serviceName: string;
-  /**
-   *
-   */
+  /** Additional OpenTelemetry resource attributes. */
   resourceAttributes: Record<string, string | number | boolean>;
 };
 

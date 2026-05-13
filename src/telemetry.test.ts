@@ -1,24 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClaudeSdkQueryModule, SdkMessage } from './types.js';
+import type { AgentMessage, ProviderAdapter } from './types.js';
 
 const telemetryMocks = vi.hoisted(() => ({
   forceFlush: vi.fn<() => Promise<void>>(async () => undefined),
   shutdown: vi.fn<() => Promise<void>>(async () => undefined),
   start: vi.fn<() => void>(() => undefined),
-  manuallyInstrument: vi.fn<(sdkModule: object) => void>(() => undefined),
-  startActiveObservation: vi.fn(
-    async <Result>(_name: string, callback: () => Promise<Result>) =>
-      callback(),
+  setLangfuseProcessor: vi.fn<(processor: object | undefined) => void>(
+    () => undefined,
   ),
-  propagateAttributes: vi.fn(
-    async <Result>(_attributes: object, callback: () => Promise<Result>) =>
-      callback(),
-  ),
-  updateActiveObservation: vi.fn<(attributes: object) => void>(() => undefined),
-  setStatus: vi.fn<(status: object) => void>(() => undefined),
-  recordException: vi.fn<(error: Error) => void>(() => undefined),
-  defaultQueryCalls: [] as unknown[],
   langfuseSpanProcessorConfigs: [] as object[],
   nodeSdkConfigs: [] as object[],
 }));
@@ -35,27 +25,6 @@ vi.mock('@langfuse/otel', () => ({
     }
 
     public forceFlush = telemetryMocks.forceFlush;
-  },
-}));
-
-vi.mock('@langfuse/tracing', () => ({
-  propagateAttributes: telemetryMocks.propagateAttributes,
-  startActiveObservation: telemetryMocks.startActiveObservation,
-  updateActiveObservation: telemetryMocks.updateActiveObservation,
-}));
-
-vi.mock('@opentelemetry/api', () => ({
-  SpanStatusCode: { ERROR: 2 },
-  trace: {
-    /**
-     * Returns a mock active span.
-     *
-     * @returns A mock span with setStatus and recordException.
-     */
-    getActiveSpan: (): object => ({
-      setStatus: telemetryMocks.setStatus,
-      recordException: telemetryMocks.recordException,
-    }),
   },
 }));
 
@@ -86,66 +55,63 @@ vi.mock('@opentelemetry/sdk-node', () => ({
   },
 }));
 
-vi.mock('@arizeai/openinference-instrumentation-claude-agent-sdk', () => ({
-  ClaudeAgentSDKInstrumentation: class ClaudeAgentSDKInstrumentation {
-    public manuallyInstrument = telemetryMocks.manuallyInstrument;
-  },
+vi.mock('./tracing.js', () => ({
+  setLangfuseProcessor: telemetryMocks.setLangfuseProcessor,
+  traceSpan: vi.fn(),
+  createSessionSpan: vi.fn(),
+  setOtelAttrs: vi.fn(),
+  isTracingEnabled: vi.fn(() => false),
+  flushTracing: vi.fn(async () => undefined),
 }));
 
-vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
-  /**
-   * Mock Claude SDK query generator.
-   *
-   * @param input - The query input.
-   * @yields A single result message.
-   */
-  async *query(input: unknown): AsyncGenerator<object> {
-    telemetryMocks.defaultQueryCalls.push(input);
-    yield {
-      type: 'result',
-      subtype: 'success',
-      session_id: 'default-sdk-session',
-      total_cost_usd: 0.05,
-    };
-  },
-}));
-
-/** Mock SDK module with captured query calls for test assertions. */
-type MockSdk = {
-  /** Captured SDK query call arguments. */
-  queryCalls: unknown[];
-  /** Instrumented SDK module under test. */
-  sdkModule: ClaudeSdkQueryModule;
+/** Mock adapter with captured run calls for test assertions. */
+type MockAdapter = {
+  /** Captured adapter run call arguments. */
+  runCalls: unknown[];
+  /** Provider adapter under test. */
+  adapter: ProviderAdapter;
 };
 
-const resultMessage = {
+const initMessage: AgentMessage = {
+  type: 'init',
+  sessionId: 'telemetry-session',
+  model: 'mock-model',
+  tools: [],
+};
+
+const resultMessage: AgentMessage = {
   type: 'result',
-  subtype: 'success',
-  session_id: 'telemetry-session',
-  total_cost_usd: 0.1,
-} as SdkMessage;
+  success: true,
+  costUsd: 0.1,
+};
 
 /**
- * Creates a mock SDK module for telemetry testing.
+ * Creates a mock adapter for telemetry testing.
  *
- * @returns The mock SDK module and recorded query calls.
+ * @param messages - Messages emitted by the adapter.
+ * @returns The mock adapter and recorded run calls.
  */
-const createMockSdk = (): MockSdk => {
-  const queryCalls: unknown[] = [];
-  const sdkModule: ClaudeSdkQueryModule = {
+const createMockAdapter = (
+  messages: AgentMessage[] = [initMessage, resultMessage],
+): MockAdapter => {
+  const runCalls: unknown[] = [];
+  const adapter: ProviderAdapter = {
+    name: 'mock',
     /**
-     * Mock query generator.
+     * Mock adapter run generator.
      *
-     * @param input - The query input.
-     * @yields A single result message.
+     * @param config - The run config.
+     * @yields Configured agent messages.
      */
-    async *query(input: unknown): AsyncGenerator<SdkMessage> {
-      queryCalls.push(input);
-      yield resultMessage;
+    async *run(config): AsyncGenerator<AgentMessage> {
+      runCalls.push(config);
+      for (const message of messages) {
+        yield message;
+      }
     },
-  } as ClaudeSdkQueryModule;
+  };
 
-  return { queryCalls, sdkModule };
+  return { runCalls, adapter };
 };
 
 describe('telemetry lifecycle', () => {
@@ -155,7 +121,6 @@ describe('telemetry lifecycle', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    telemetryMocks.defaultQueryCalls.length = 0;
     telemetryMocks.langfuseSpanProcessorConfigs.length = 0;
     telemetryMocks.nodeSdkConfigs.length = 0;
     /* eslint-disable n/no-process-env */
@@ -172,9 +137,9 @@ describe('telemetry lifecycle', () => {
 
   it('starts telemetry and delegates flush and shutdown', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
+    const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled', serviceName: 'metamask-evals' },
     });
 
@@ -187,109 +152,58 @@ describe('telemetry lifecycle', () => {
         baseUrl: 'https://cloud.langfuse.com',
       },
     ]);
+    expect(telemetryMocks.setLangfuseProcessor).toHaveBeenCalledWith(
+      expect.objectContaining({ forceFlush: telemetryMocks.forceFlush }),
+    );
 
     await runner.flush();
     await runner.shutdown();
 
     expect(telemetryMocks.forceFlush).toHaveBeenCalledOnce();
     expect(telemetryMocks.shutdown).toHaveBeenCalledOnce();
+    expect(telemetryMocks.setLangfuseProcessor).toHaveBeenLastCalledWith(
+      undefined,
+    );
   });
 
-  it('instruments a mutable SDK copy when no sdkModule is injected', async () => {
+  it('passes run config through the injected adapter when telemetry is enabled', async () => {
     const { createAgentRunner } = await import('./runner.js');
+    const { runCalls, adapter } = createMockAdapter();
     const runner = createAgentRunner({
+      adapter,
       telemetry: { mode: 'enabled' },
     });
 
     const result = await runner.runAgent({ prompt: 'instrumented run' });
 
-    expect(result.sessionId).toBe('default-sdk-session');
-    expect(telemetryMocks.defaultQueryCalls).toStrictEqual([
+    expect(result.sessionId).toBe('telemetry-session');
+    expect(runCalls).toStrictEqual([
       {
         prompt: 'instrumented run',
         options: { settingSources: [] },
       },
     ]);
-    expect(telemetryMocks.manuallyInstrument).toHaveBeenCalledOnce();
 
-    const instrumentedModule =
-      telemetryMocks.manuallyInstrument.mock.calls[0]?.[0];
-    expect(instrumentedModule).toBeDefined();
-    expect(instrumentedModule).toHaveProperty('query');
+    await runner.shutdown();
   });
 
-  it('skips instrumentation when sdkModule is injected', async () => {
+  it('returns partial result when agent run fails under telemetry', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { queryCalls, sdkModule } = createMockSdk();
-    const runner = createAgentRunner({
-      sdkModule,
-      telemetry: { mode: 'enabled' },
-    });
-
-    const result = await runner.runAgent({ prompt: 'injected run' });
-
-    expect(result.sessionId).toBe('telemetry-session');
-    expect(queryCalls).toStrictEqual([
-      {
-        prompt: 'injected run',
-        options: { settingSources: [] },
-      },
-    ]);
-    expect(telemetryMocks.manuallyInstrument).not.toHaveBeenCalled();
-  });
-
-  it('propagates Langfuse run attributes around the agent execution', async () => {
-    const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
-    const runner = createAgentRunner({
-      sdkModule,
-      telemetry: { mode: 'enabled' },
-    });
-
-    await runner.runAgent({
-      prompt: 'tagged run',
-      telemetry: {
-        traceName: 'metamask-agent-eval',
-        userId: 'ci',
-        sessionId: 'eval-123',
-        tags: ['eval', 'metamask'],
-        version: '0.1.0',
-        metadata: { scenario: 'llm-workflow' },
-      },
-    });
-
-    expect(telemetryMocks.startActiveObservation).toHaveBeenCalledWith(
-      'metamask-agent-eval',
-      expect.any(Function),
-    );
-    expect(telemetryMocks.propagateAttributes).toHaveBeenCalledWith(
-      {
-        userId: 'ci',
-        sessionId: 'eval-123',
-        metadata: { scenario: 'llm-workflow' },
-        tags: ['eval', 'metamask'],
-        version: '0.1.0',
-      },
-      expect.any(Function),
-    );
-  });
-
-  it('records error on telemetry observation when agent run fails', async () => {
-    const { createAgentRunner } = await import('./runner.js');
-    const sdkError = new Error('SDK connection failed');
-    const sdkModule: ClaudeSdkQueryModule = {
+    const adapterError = new Error('Adapter connection failed');
+    const adapter: ProviderAdapter = {
+      name: 'mock',
       /**
-       * Mock query that throws immediately.
+       * Mock run that throws immediately.
        *
-       * @param _input - The query input (unused).
+       * @param _config - The run config (unused).
        */
       // eslint-disable-next-line require-yield
-      async *query(_input: unknown): AsyncGenerator<SdkMessage> {
-        throw sdkError;
+      async *run(_config): AsyncGenerator<AgentMessage> {
+        throw adapterError;
       },
-    } as ClaudeSdkQueryModule;
+    };
     const runner = createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled' },
     });
 
@@ -299,25 +213,16 @@ describe('telemetry lifecycle', () => {
     });
 
     expect(result.isPartial).toBe(true);
-    expect(result.error).toBe(sdkError);
-    expect(telemetryMocks.updateActiveObservation).toHaveBeenCalledWith({
-      level: 'ERROR',
-      statusMessage: 'SDK connection failed',
-    });
-    expect(telemetryMocks.setStatus).toHaveBeenCalledWith({
-      code: 2,
-      message: 'SDK connection failed',
-    });
-    expect(telemetryMocks.recordException).toHaveBeenCalledWith(sdkError);
+    expect(result.error).toBe(adapterError);
 
     await runner.shutdown();
   });
 
-  it('does not record error on telemetry observation for successful runs', async () => {
+  it('does not mark successful runs as partial under telemetry', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
+    const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled' },
     });
 
@@ -327,50 +232,52 @@ describe('telemetry lifecycle', () => {
     });
 
     expect(result.isPartial).toBe(false);
-    expect(telemetryMocks.updateActiveObservation).not.toHaveBeenCalled();
-    expect(telemetryMocks.setStatus).not.toHaveBeenCalled();
-    expect(telemetryMocks.recordException).not.toHaveBeenCalled();
+    expect(result.error).toBeUndefined();
 
     await runner.shutdown();
   });
 
   it('shares telemetry infra when two runners use the same config', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule: sdkA } = createMockSdk();
-    const { sdkModule: sdkB } = createMockSdk();
+    const { adapter: adapterA } = createMockAdapter();
+    const { adapter: adapterB } = createMockAdapter();
 
     const runnerA = createAgentRunner({
-      sdkModule: sdkA,
+      adapter: adapterA,
       telemetry: { mode: 'enabled', serviceName: 'metamask-evals' },
     });
     const runnerB = createAgentRunner({
-      sdkModule: sdkB,
+      adapter: adapterB,
       telemetry: { mode: 'enabled', serviceName: 'metamask-evals' },
     });
 
     expect(runnerA.enabled).toBe(true);
     expect(runnerB.enabled).toBe(true);
     expect(telemetryMocks.start).toHaveBeenCalledOnce();
+    expect(telemetryMocks.setLangfuseProcessor).toHaveBeenCalledTimes(2);
 
     await runnerB.shutdown();
     expect(telemetryMocks.shutdown).not.toHaveBeenCalled();
 
     await runnerA.shutdown();
     expect(telemetryMocks.shutdown).toHaveBeenCalledOnce();
+    expect(telemetryMocks.setLangfuseProcessor).toHaveBeenLastCalledWith(
+      undefined,
+    );
   });
 
   it('rejects a second runner with a different telemetry config', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
+    const { adapter } = createMockAdapter();
 
     createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled', serviceName: 'metamask-evals' },
     });
 
     expect(() =>
       createAgentRunner({
-        sdkModule,
+        adapter,
         telemetry: { mode: 'enabled', serviceName: 'different-service' },
       }),
     ).toThrow(
@@ -383,22 +290,22 @@ describe('telemetry lifecycle', () => {
     telemetryMocks.shutdown.mockRejectedValueOnce(shutdownError);
 
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
+    const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled' },
     });
 
     await expect(runner.shutdown()).rejects.toThrow('OTel shutdown failed');
 
-    // Controller is marked shut down — second call is a no-op, does not reject
+    // Controller is marked shut down — second call is a no-op, does not reject.
     expect(await runner.shutdown()).toBeUndefined();
 
-    // sharedInfra was cleared before the await, so a new runner can start fresh infra
+    // sharedInfra was cleared before the await, so a new runner can start fresh infra.
     telemetryMocks.shutdown.mockResolvedValueOnce(undefined);
-    const { sdkModule: sdkModule2 } = createMockSdk();
+    const { adapter: adapter2 } = createMockAdapter();
     const runner2 = createAgentRunner({
-      sdkModule: sdkModule2,
+      adapter: adapter2,
       telemetry: { mode: 'enabled' },
     });
     expect(runner2.enabled).toBe(true);
@@ -409,10 +316,10 @@ describe('telemetry lifecycle', () => {
 
   it('always validates config even when shared infra exists', async () => {
     const { createAgentRunner } = await import('./runner.js');
-    const { sdkModule } = createMockSdk();
+    const { adapter } = createMockAdapter();
 
     createAgentRunner({
-      sdkModule,
+      adapter,
       telemetry: { mode: 'enabled' },
     });
 
@@ -424,7 +331,7 @@ describe('telemetry lifecycle', () => {
 
     expect(() =>
       createAgentRunner({
-        sdkModule,
+        adapter,
         telemetry: { mode: 'enabled' },
       }),
     ).toThrow(
