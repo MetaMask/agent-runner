@@ -12,74 +12,74 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-darwin-arm64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-darwin-arm64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-darwin-arm64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-darwin-arm64@npm:0.2.138"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-darwin-x64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-darwin-x64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-darwin-x64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-darwin-x64@npm:0.2.138"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-linux-arm64-musl@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-linux-arm64-musl@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-linux-arm64-musl@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-linux-arm64-musl@npm:0.2.138"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-linux-arm64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-linux-arm64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-linux-arm64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-linux-arm64@npm:0.2.138"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-linux-x64-musl@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-linux-x64-musl@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-linux-x64-musl@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-linux-x64-musl@npm:0.2.138"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-linux-x64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-linux-x64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-linux-x64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-linux-x64@npm:0.2.138"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-win32-arm64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-win32-arm64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-win32-arm64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-win32-arm64@npm:0.2.138"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk-win32-x64@npm:0.2.139":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk-win32-x64@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk-win32-x64@npm:0.2.138":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk-win32-x64@npm:0.2.138"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"@anthropic-ai/claude-agent-sdk@npm:^0.2.138":
-  version: 0.2.139
-  resolution: "@anthropic-ai/claude-agent-sdk@npm:0.2.139"
+"@anthropic-ai/claude-agent-sdk@npm:^0.2.136":
+  version: 0.2.138
+  resolution: "@anthropic-ai/claude-agent-sdk@npm:0.2.138"
   dependencies:
-    "@anthropic-ai/claude-agent-sdk-darwin-arm64": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-darwin-x64": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-linux-arm64": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-linux-arm64-musl": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-linux-x64": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-linux-x64-musl": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-win32-arm64": "npm:0.2.139"
-    "@anthropic-ai/claude-agent-sdk-win32-x64": "npm:0.2.139"
+    "@anthropic-ai/claude-agent-sdk-darwin-arm64": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-darwin-x64": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-linux-arm64": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-linux-arm64-musl": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-linux-x64": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-linux-x64-musl": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-win32-arm64": "npm:0.2.138"
+    "@anthropic-ai/claude-agent-sdk-win32-x64": "npm:0.2.138"
     "@anthropic-ai/sdk": "npm:^0.81.0"
     "@modelcontextprotocol/sdk": "npm:^1.29.0"
   peerDependencies:
@@ -101,7 +101,7 @@ __metadata:
       optional: true
     "@anthropic-ai/claude-agent-sdk-win32-x64":
       optional: true
-  checksum: 10/09c6c16b39a9842d47dd0fb3886b6754b89a435ca534325ed179f78b17bd0415a5b268bb0ce6ce6bfd4bd66b8aa29e91e7bd354dffa89ce9c3ff72b842800c6b
+  checksum: 10/a4595c40e89a31eb97ff1191dc1966d3f18c4c0778bdc2fd8e2a75aa78be30b73a9a777c17e34f9587c52ea45ff9ada5974adb7bc70452dd6311ea25e1e0562c
   languageName: node
   linkType: hard
 
@@ -149,37 +149,6 @@ __metadata:
     typescript: "npm:5.3.3"
     validate-npm-package-name: "npm:^5.0.0"
   checksum: 10/af07d7d0d93926b019d8dc412cee251db972e443be181ef4ef79d28d61f76542b2911a381397ab3ddc23d9a669d830994b4f3b0033f8244f3750027f319595af
-  languageName: node
-  linkType: hard
-
-"@arizeai/openinference-core@npm:2.0.8":
-  version: 2.0.8
-  resolution: "@arizeai/openinference-core@npm:2.0.8"
-  dependencies:
-    "@arizeai/openinference-semantic-conventions": "npm:2.3.0"
-    "@opentelemetry/api": "npm:^1.9.0"
-    "@opentelemetry/core": "npm:^1.25.1"
-  checksum: 10/a38cae499961c6638816105d5849f642e16d92eacc38afa4450d148f134dfca9a0e79426e0a2be5e8edf265be75e866486222e35d2d2172dce4b175357c4152b
-  languageName: node
-  linkType: hard
-
-"@arizeai/openinference-instrumentation-claude-agent-sdk@npm:^0.2.3":
-  version: 0.2.3
-  resolution: "@arizeai/openinference-instrumentation-claude-agent-sdk@npm:0.2.3"
-  dependencies:
-    "@arizeai/openinference-core": "npm:2.0.8"
-    "@arizeai/openinference-semantic-conventions": "npm:2.3.0"
-    "@opentelemetry/api": "npm:^1.9.0"
-    "@opentelemetry/core": "npm:^1.25.1"
-    "@opentelemetry/instrumentation": "npm:^0.46.0"
-  checksum: 10/411e1db09168749ac25ba2deeed65faf7fa9df160f1b62d119a65ea87fddab9dfe67c316ebea349402fd27120147f5a1d5bc8d2c1e77e2a2786a653a3b4b8408
-  languageName: node
-  linkType: hard
-
-"@arizeai/openinference-semantic-conventions@npm:2.3.0":
-  version: 2.3.0
-  resolution: "@arizeai/openinference-semantic-conventions@npm:2.3.0"
-  checksum: 10/7c045104d9fe7d3faba2a6fc69c22313effeedd6757f4dfe3d27935baab13418ebba1f9fd9d7728ed5ab3ce4885d5e36de51b484bb61ae50bbc9ac74f4053af5
   languageName: node
   linkType: hard
 
@@ -740,9 +709,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/agent-runner@workspace:."
   dependencies:
-    "@anthropic-ai/claude-agent-sdk": "npm:^0.2.138"
+    "@anthropic-ai/claude-agent-sdk": "npm:^0.2.136"
     "@arethetypeswrong/cli": "npm:^0.15.3"
-    "@arizeai/openinference-instrumentation-claude-agent-sdk": "npm:^0.2.3"
     "@langfuse/otel": "npm:^5.3.0"
     "@langfuse/tracing": "npm:^5.3.0"
     "@lavamoat/allow-scripts": "npm:^3.0.4"
@@ -1123,7 +1091,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/api@npm:^1.3.0, @opentelemetry/api@npm:^1.9.0, @opentelemetry/api@npm:^1.9.1":
+"@opentelemetry/api@npm:^1.3.0, @opentelemetry/api@npm:^1.9.1":
   version: 1.9.1
   resolution: "@opentelemetry/api@npm:1.9.1"
   checksum: 10/b26032739d3c54ca99b5a2920844a1fbd4c3ee383cacbb0915e8c706a2626fe91e96feaa6e893397abe0545dc8d0a765b220aa18a31b1773176eeaf3a225e10e
@@ -1159,17 +1127,6 @@ __metadata:
   peerDependencies:
     "@opentelemetry/api": ">=1.0.0 <1.10.0"
   checksum: 10/aaec929e1f22b3704e3cb195f8a27b2d9bd0292a565741c00b1e8cde0f3043de41713632fe15e4bfd588d83807a5b10a861deffad173e28787802ede9123ced7
-  languageName: node
-  linkType: hard
-
-"@opentelemetry/core@npm:^1.25.1":
-  version: 1.30.1
-  resolution: "@opentelemetry/core@npm:1.30.1"
-  dependencies:
-    "@opentelemetry/semantic-conventions": "npm:1.28.0"
-  peerDependencies:
-    "@opentelemetry/api": ">=1.0.0 <1.10.0"
-  checksum: 10/fa3df9619fdbf8f607132d72915849754b71c4c5f5f705b30c8c59b209abe97206decf25cb8ebafdbb6105a4baab2acddee47468cb9d0b67f1a8df96cebc3548
   languageName: node
   linkType: hard
 
@@ -1358,21 +1315,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/instrumentation@npm:^0.46.0":
-  version: 0.46.0
-  resolution: "@opentelemetry/instrumentation@npm:0.46.0"
-  dependencies:
-    "@types/shimmer": "npm:^1.0.2"
-    import-in-the-middle: "npm:1.7.1"
-    require-in-the-middle: "npm:^7.1.1"
-    semver: "npm:^7.5.2"
-    shimmer: "npm:^1.2.1"
-  peerDependencies:
-    "@opentelemetry/api": ^1.3.0
-  checksum: 10/d0e59c95a7f33e472346ff1d0d64cd70d4a6ce4f22d3d18e0f12872a73af7a6a9af8c0c86324a792572d3f894a394a640fbf984fe5673e79aefc6d68c5a24cc5
-  languageName: node
-  linkType: hard
-
 "@opentelemetry/otlp-exporter-base@npm:0.217.0":
   version: 0.217.0
   resolution: "@opentelemetry/otlp-exporter-base@npm:0.217.0"
@@ -1534,13 +1476,6 @@ __metadata:
   peerDependencies:
     "@opentelemetry/api": ">=1.0.0 <1.10.0"
   checksum: 10/fb9dac6262b919a6cf265bad5a10597dfca8f91bb45cd867fd4a61b0e1ad0e17e0a42db47485a4c93a27df89412bae0f5d820c0e28a21f438050709351dd33ad
-  languageName: node
-  linkType: hard
-
-"@opentelemetry/semantic-conventions@npm:1.28.0":
-  version: 1.28.0
-  resolution: "@opentelemetry/semantic-conventions@npm:1.28.0"
-  checksum: 10/c182a3206769b5d5a8ab89a5c674d046fd789421cef27ea55af179990e314732433c98e5017aa23e99f15fd2b0e13cb129bb6c2282da6860ce9419adf32b2e87
   languageName: node
   linkType: hard
 
@@ -2120,13 +2055,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/shimmer@npm:^1.0.2":
-  version: 1.2.0
-  resolution: "@types/shimmer@npm:1.2.0"
-  checksum: 10/f081a31d826ce7bfe8cc7ba8129d2b1dffae44fd580eba4fcf741237646c4c2494ae6de2cada4b7713d138f35f4bc512dbf01311d813dee82020f97d7d8c491c
-  languageName: node
-  linkType: hard
-
 "@types/unist@npm:*, @types/unist@npm:^3.0.0":
   version: 3.0.3
   resolution: "@types/unist@npm:3.0.3"
@@ -2609,15 +2537,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn-import-assertions@npm:^1.9.0":
-  version: 1.9.0
-  resolution: "acorn-import-assertions@npm:1.9.0"
-  peerDependencies:
-    acorn: ^8
-  checksum: 10/af8dd58f6b0c6a43e85849744534b99f2133835c6fcdabda9eea27d0a0da625a0d323c4793ba7cb25cf4507609d0f747c210ccc2fc9b5866de04b0e59c9c5617
-  languageName: node
-  linkType: hard
-
 "acorn-import-attributes@npm:^1.9.5":
   version: 1.9.5
   resolution: "acorn-import-attributes@npm:1.9.5"
@@ -2645,7 +2564,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn@npm:^8.11.0, acorn@npm:^8.15.0, acorn@npm:^8.4.1, acorn@npm:^8.8.2":
+"acorn@npm:^8.11.0, acorn@npm:^8.15.0, acorn@npm:^8.4.1":
   version: 8.16.0
   resolution: "acorn@npm:8.16.0"
   bin:
@@ -3028,7 +2947,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cjs-module-lexer@npm:^1.2.2, cjs-module-lexer@npm:^1.3.1":
+"cjs-module-lexer@npm:^1.3.1":
   version: 1.4.3
   resolution: "cjs-module-lexer@npm:1.4.3"
   checksum: 10/d2b92f919a2dedbfd61d016964fce8da0035f827182ed6839c97cac56e8a8077cfa6a59388adfe2bc588a19cef9bbe830d683a76a6e93c51f65852062cfe2591
@@ -4384,18 +4303,6 @@ __metadata:
     parent-module: "npm:^1.0.0"
     resolve-from: "npm:^4.0.0"
   checksum: 10/a06b19461b4879cc654d46f8a6244eb55eb053437afd4cbb6613cad6be203811849ed3e4ea038783092879487299fda24af932b86bdfff67c9055ba3612b8c87
-  languageName: node
-  linkType: hard
-
-"import-in-the-middle@npm:1.7.1":
-  version: 1.7.1
-  resolution: "import-in-the-middle@npm:1.7.1"
-  dependencies:
-    acorn: "npm:^8.8.2"
-    acorn-import-assertions: "npm:^1.9.0"
-    cjs-module-lexer: "npm:^1.2.2"
-    module-details-from-path: "npm:^1.0.3"
-  checksum: 10/a675f1480456bad4d674ccb82a39fef8252cd9cb07fb2ddae027dbee6c772fb1f9b6090706b0160f9948fb145963b76d1554b37bce477ef26b0aaa3bd805232a
   languageName: node
   linkType: hard
 
@@ -5852,17 +5759,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"require-in-the-middle@npm:^7.1.1":
-  version: 7.5.2
-  resolution: "require-in-the-middle@npm:7.5.2"
-  dependencies:
-    debug: "npm:^4.3.5"
-    module-details-from-path: "npm:^1.0.3"
-    resolve: "npm:^1.22.8"
-  checksum: 10/d8f137d72eec1c53987647d19cd3bd2c64d5417bcd06b9ac8f7a14e83924c1e7636e327df7d96066a2b446b41f50d0bc1856a521388d5e90ba5c3b18dd5ab4e8
-  languageName: node
-  linkType: hard
-
 "require-in-the-middle@npm:^8.0.0":
   version: 8.0.1
   resolution: "require-in-the-middle@npm:8.0.1"
@@ -5924,7 +5820,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@npm:^1.22.3, resolve@npm:^1.22.8":
+"resolve@npm:^1.22.3":
   version: 1.22.12
   resolution: "resolve@npm:1.22.12"
   dependencies:
@@ -5951,7 +5847,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@npm%3A^1.22.3#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.8#optional!builtin<compat/resolve>":
+"resolve@patch:resolve@npm%3A^1.22.3#optional!builtin<compat/resolve>":
   version: 1.22.12
   resolution: "resolve@patch:resolve@npm%3A1.22.12#optional!builtin<compat/resolve>::version=1.22.12&hash=c3c19d"
   dependencies:
@@ -6059,7 +5955,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.5.2, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.3, semver@npm:^7.7.1, semver@npm:^7.7.2, semver@npm:^7.7.3":
+"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.3, semver@npm:^7.7.1, semver@npm:^7.7.2, semver@npm:^7.7.3":
   version: 7.8.0
   resolution: "semver@npm:7.8.0"
   bin:
@@ -6135,13 +6031,6 @@ __metadata:
     "@shikijs/vscode-textmate": "npm:^10.0.1"
     "@types/hast": "npm:^3.0.4"
   checksum: 10/93de1ebc768ff497ba36720f3b385bff65a853248fdfc0afcb2aea81a43560b1bdc7db9e8417df11a87e106b0de0943989c6301daf62a43d09bd9ac7bc776bf3
-  languageName: node
-  linkType: hard
-
-"shimmer@npm:^1.2.1":
-  version: 1.2.1
-  resolution: "shimmer@npm:1.2.1"
-  checksum: 10/aa0d6252ad1c682a4fdfda69e541be987f7a265ac7b00b1208e5e48cc68dc55f293955346ea4c71a169b7324b82c70f8400b3d3d2d60b2a7519f0a3522423250
   languageName: node
   linkType: hard
 
