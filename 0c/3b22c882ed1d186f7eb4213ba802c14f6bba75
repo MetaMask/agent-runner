@@ -1,0 +1,317 @@
+src/formatter.ts
+  s_bdb796f6752a1d::t_21e7c9367124c2 202
+  s_535f16a3ba159b::t_af5af908e015cc 1,3-4,7,9-10,12,17,19-20,22,34,38,48,52-53,58,63,76,79-80,97,100-151,154-191,193-196,198-201
+src/index.ts
+  s_facc5adf85e923::t_80b9cff071801e 9,18-19
+src/formatter.test.ts
+  s_7abed94c8202c7::t_641a4f90182f65 4-19,22,24-29,31,35,39,41-42,44-48,54,59-65,72-76,82-87,93,99-104,108-118,121-125,131-135,143-147,154,158,160,165-171,176-181,186-193,198-206,208-209,214-222,224-225,230-235,242-248,253,255-259,267-271,276-281,283,286-289,291,293-302,305-313,316-325,328-334,336,343-347,355-358,362,364,371-377,385-390,395-402,410-411,415-417,422-423,425-426,429-430
+src/tracing.test.ts
+  s_3d518fc55c3d43::t_37e75b4522a72f 88,92,95,104-142,149-151
+  s_cc27706f9983d5::t_91915c62e5fd2a 214
+  s_cc27706f9983d5::t_5a8deec3a8799d 15
+  s_34fbe9e4fa982a::t_0ce00466ab4f14 1
+  s_d3a40b1a0630f5::t_8588f0f49be756 2-9,11-14,16-17,20-33,70-87,89-91,93-94,96-103,143-148,152-154,158-163,170-178,191-196,198-208,210-213,215-228,250-259
+  s_3d518fc55c3d43::t_6f7d109d16024a 155-157,164-169,179-190,197
+  s_cc27706f9983d5::t_6d7570202b6672 209
+  s_3d518fc55c3d43::t_864756b4656949 229-249
+  s_d3a40b1a0630f5::t_b49db223626448 18-19,34-69
+  s_3d518fc55c3d43::t_7bba682baca535 10
+src/tracing.ts
+  s_ca5c84babba8ee::t_68505d9c1805ec 131
+  s_cc27706f9983d5::t_19243ddfbb14e5 148
+  s_cc27706f9983d5::t_a62675e068ad1b 7
+  s_cc27706f9983d5::t_954d18c6a65ffc 163
+  s_3d518fc55c3d43::t_20094c19d85bd5 169-182
+  s_3d518fc55c3d43::t_dc836565d13cec 84,87-88,93-106
+  s_3d518fc55c3d43::t_28e997c54fdfb0 143
+  s_3d518fc55c3d43::t_fa05b36de95f44 115,122
+  s_cc27706f9983d5::t_47a1ca7b597bde 1,8-10,12-43
+  s_3d518fc55c3d43::t_ec5d0f35865cb4 2
+  s_3d518fc55c3d43::t_e541f5ca34e58d 45-53,55,57,59-60
+  s_89b7567d948fc8::t_7a25c22ec4e2b4 126,136-137
+  s_3dc57505707618::t_0717ccc08714bc 4-6,11,44,61-65,67,70-83,85-86,89-92,107-114,116-121,123-125,138-142,144-147,149-162,164-168,183-189
+  h_d6a04d82b61d5e 66,68-69,127-130,132-135
+  s_3d518fc55c3d43::t_c178d1b788cd6f 54,56,58
+src/telemetry.ts
+  s_5e9af090e6aaf4::t_1d6cc282df9769 146,150,155,177-178
+  s_970a05f5e7a7cb::t_31fedf33793fcb 166
+  s_970a05f5e7a7cb::t_9e992549535361 157
+  s_970a05f5e7a7cb::t_db706b80ff9547 11
+  s_970a05f5e7a7cb::t_c5672abb30ba82 48,51,53,55,57
+  s_5e9af090e6aaf4::t_34f48286662ee9 7-8,15,17,23,26-28,31
+src/runner.test.ts
+  s_7abed94c8202c7::t_ef2a93693eba54 5-12,15-28,31-33,36,38-39,41-46,48,50-51,53-54,59,61,66-67,71,80,82,91,100-101,105-109,114,118-120,127,134-138,182-183,199,203-204,222-225,227,229,232-233,235-236,241,246-249,251,253-254,256-258,260-261,266,268,272-281,290-291,294-296,298,300,303,305,307-308,314
+src/message-handler.ts
+  s_3d518fc55c3d43::t_273f0a1c693624 42,46,50,54
+  s_3dc57505707618::t_2d7070ed34f42a 1,9-38,55-93,98-102,108-130,137-167,169-171,177-182,202,207-208,214-222,236,259,265-266,272-290,296-301,307-325,329-336,340-344,350,356,358-362,368-372,378-383,392-393,399-402,410-414,417-418,421-425,433-444,451,453-454,461-463
+  s_bdb796f6752a1d::t_d1bed8ecdfd8d2 173,175,210,212,268,270,292,294,303,305,327,338,374,376,395,397,404,406-408,427,429-431,446,448-449,456,458-459
+  s_aab0b21f408254::t_e1bc9862bbbe11 254,346-348
+  s_3d518fc55c3d43::t_50a5100437408b 183-201,203-206
+  s_3d518fc55c3d43::t_2ff79cb5cde213 94-97
+  s_3d518fc55c3d43::t_9a3625245e518b 345,349,351-355,357,363-367
+  s_3d518fc55c3d43::t_266945c0b9a328 168
+  s_3d518fc55c3d43::t_9e3e3183c67ad1 2-7
+  s_3d518fc55c3d43::t_628cc24c88ee50 223-235,237-248,250-253,255-258,260-264
+  s_facc5adf85e923::t_37ac47b6208f03 249
+  s_facc5adf85e923::t_cd2aabb637ba6d 415-416,419-420
+  s_970a05f5e7a7cb::t_937a1f320c8bdc 103-107
+  s_3d518fc55c3d43::t_f4222812d92857 131-136
+  s_3d518fc55c3d43::t_e50824c42af5f7 384-391
+  s_3d518fc55c3d43::t_a47602c02797cc 39-41,43-45,47-49,51-53
+  h_d6a04d82b61d5e 8,172,174,176,209,211,213,267,269,271,291,293,295,302,304,306,326,328,337,339,373,375,377,394,396,398,403,405,409,426,428,432,445,447,450,452,455,457,460
+src/message-handler.test.ts
+  s_3d518fc55c3d43::t_105b0c206f72ee 356-357
+  s_3d518fc55c3d43::t_df7690442208c7 335-336
+  s_3d518fc55c3d43::t_9257c538662068 54,58,64,67
+  s_d3a40b1a0630f5::t_438532dcd90075 1-36,38-39,41-47,49-53,55-56,60-63,65-66,68-111,113-115,117-131,133-230,243-334,337-355,358-374,376-402,404-430,433-505,609
+  s_3d518fc55c3d43::t_05ebe2cda8ac33 48
+  s_3d518fc55c3d43::t_d6249f9b85afde 112,116
+  s_3d518fc55c3d43::t_68705baf0e09f0 132
+  s_d3a40b1a0630f5::t_6501f034cbb62b 231-242
+  s_3d518fc55c3d43::t_06118082ac3bc4 403
+  h_d6a04d82b61d5e 548
+  s_3d518fc55c3d43::t_0f1bf772022f6a 375
+  s_3d518fc55c3d43::t_c9c40d4ebb6cf7 40
+  s_bdb796f6752a1d::t_1f42f63b6f6729 57,59
+  s_3d518fc55c3d43::t_a2c581037c6f3c 506-547,549-608
+  s_aab0b21f408254::t_554820a80fdadb 37
+  s_3d518fc55c3d43::t_27b90ee1c0abfb 431-432
+src/types.ts
+  s_facc5adf85e923::t_238d13b4c6b83c 20,22,24,26
+  s_facc5adf85e923::t_6418db89cb36c3 193
+  s_e146337c2c811e::t_e46ac5c7d8b854 6,8,10,12-15,17-18,27-29,31-32,34,36,38,40,42-45,47-48,50,52,54,56,58,60,62-65,67-68,70,72,74,76,78-81,83-84,86,88,90,92,94,96,98,100-103,105-106,108,110,112,114-117,119-120,122,124,126,128-131,133-134,136,138,140-143,145-146,148,150,152-155,157-168,172,177,182,187,191,195-198,201-202,204,206-207,213,246,270,310,312
+  s_970a05f5e7a7cb::t_b9d0b68ce5843c 4,7,9,11,16,19,21,23,25,30,33,35,37,39,41,46,49,51,53,55,57,59,61,66,69,71,73,75,77,82,85,87,89,91,93,95,97,99,104,107,109,111,113,118,121,123,125,127,132,135,137,139,144,147,149,151,156,169,174,179,184,189,192,194,199-200,203,205,210,217,222,230,233,235,237,239,241,243,245,250,253,255,257,262,265,267,269,274,277,279,281,283,285,287,292,295,297,299,301,306,309,311,313,315,317,319,321,323,325,327,329,335-336,339
+src/env.ts
+  s_970a05f5e7a7cb::t_d53f47575e567d 5,8,10,12,14,16
+src/adapters/claude-adapter.test.ts
+  s_38d82453ff02a9::t_533a7974417df7 346-393,395-497,533-556
+  s_38d82453ff02a9::t_a5f10ec5988c20 498-532
+  s_38d82453ff02a9::t_720ab893c72287 394
+  s_d3a40b1a0630f5::t_058f2891820891 1-84,86-98,100-106,108-136,138-155,157-174,176-199,201-210,286-287,289-319,321-343,345,557
+  s_d3a40b1a0630f5::t_ae386fc2a113d9 211-224,226-235
+  s_8f61983dfac0a4::t_428c5007b9b681 236-285
+  h_d6a04d82b61d5e 85,99,107,137,156,175,200,225,288,320,344
+src/telemetry.test.ts
+  s_7abed94c8202c7::t_afcf97c693e089 3,9-10,58-59,67-73,75-79,82,84-86,89,91-92,94-99,101,103-104,106-110,112,114,140,142,155-157,164-166,169,171,173,180,182,187,190,192-194,196,198,201-202,204,206,216,221,223,225,235,242-243,246,250,257,264-266,271,274,280,293,295,301,304,306,308,319,322,334
+  s_facc5adf85e923::t_f03d2d795e0ee1 60-64
+src/message-parser.test.ts
+  s_d3a40b1a0630f5::t_4fff4295bfe0f2 1-21,23-28,36-39,41-46,54-62,65-68,75-132
+  s_172e6da076ab24::t_b35d3ae2c2ec16 63-64,69-74
+  s_172e6da076ab24::t_86959a4823005a 22,29-35,40,47-53
+src/runner.ts
+  s_3d518fc55c3d43::t_249fa01ef7b57b 104-107
+  s_3d518fc55c3d43::t_3b5caf03161a2c 136-142
+  s_5e9af090e6aaf4::t_3b915c55c8afba 1,3,6,12-13,28,35,40-41,44-45,50-52,72,85-91,96-97,99-103,108-109,113,115-117,119-126,131-132,134,153,156
+  s_facc5adf85e923::t_ab4cca96687d76 114
+  h_d6a04d82b61d5e 42-43
+  s_bdb796f6752a1d::t_95ad3d8a70cf59 84
+  s_5e7aed4b7169dd::t_bfe26264c9fee4 111,127-128,133,135,143-152,155
+  s_5e9af090e6aaf4::t_49b68f42650560 92-95,98
+src/adapters/claude-adapter.ts
+  s_38d82453ff02a9::t_1747cece9b9a51 39-44,49,56-57,62-65,71-72,75-83,86,88-99,101-105
+  s_38d82453ff02a9::t_6b6ca08da7d4df 112-115,118-120,122-142
+  s_38d82453ff02a9::t_ae0625770d202d 66-70,74
+  s_b5b9e52a05ef0a::t_b3baaefabcef52 1-4,6-7,9-12,30-35,58-61,100,106-110,152-153,155,157,159,161,163,165,167-169,176-181,183-184,187-198,206,210-211,218-220,232,236,239-242,244-245,252-262,269-278,285-287,289-290,296-299,306-317,324-325,328-329,338-340,348,350-351,353-354,362-373,380-394,407-416,423-430,437-440,447-450,457-460,467-470,477-483
+  s_38d82453ff02a9::t_b6e2b7a6fcef50 84-85,87
+  s_38d82453ff02a9::t_25bab174f27cb4 50-55
+  s_38d82453ff02a9::t_fb86f8bd2ce75e 73
+  s_facc5adf85e923::t_4a6230aa41b531 212-216
+  s_facc5adf85e923::t_6243d344cbdb46 234
+  s_89b7567d948fc8::t_36e1ddb103e427 326-327,330-337
+  s_8f61983dfac0a4::t_8e4b20abd0c00d 342-345,347,349,352
+  s_38d82453ff02a9::t_01ab87e7ed1b06 5
+  s_38d82453ff02a9::t_dcc0fa43ff57f2 200-204,207-209,217
+  s_89b7567d948fc8::t_bf9f4504ad935c 484-502
+  s_970a05f5e7a7cb::t_19c94a827b5ecf 402,404
+  s_8f61983dfac0a4::t_e3a4671a1ce9be 222-227,229-231,233,235,237-238,243
+  s_89b7567d948fc8::t_e078bda60165d7 182,185-186
+  s_bdb796f6752a1d::t_a088165b17ba8d 8,13-15,17,19-20,22,24-29,37,45-48,148,171-174,228,247-250,264-267,280-283,301-304,319-322,346,356-361,375-378,396-401,403,405-406,418-421,432-435,442-445,452-455,462-465,472-475
+  s_89b7567d948fc8::t_d29858152b374e 16,18,21,23
+  s_38d82453ff02a9::t_8d4d9528d57a5d 116-117,121
+  s_8f61983dfac0a4::t_0eada20ad7b17f 143-147,149-151,154,156,158,160,162,164,166
+  s_89b7567d948fc8::t_7cd94d19af1ef8 288,291-295
+src/message-parser.ts
+  s_970a05f5e7a7cb::t_3ba1dbf54262e3 81-85
+  s_970a05f5e7a7cb::t_1773677d3bd7c1 108-110
+  s_89b7567d948fc8::t_f38d99d5caf1d3 75
+  s_172e6da076ab24::t_9139d6b72652d3 3,10-16
+  s_bdb796f6752a1d::t_03665ab22835f8 124-127
+  s_bdb796f6752a1d::t_07a8e62b21c48f 102-105
+  s_b5b9e52a05ef0a::t_919035d642a952 1-2,4-9,17-19,21-51,53-74,76-80,86-100,107,111-122,129,137-150
+  s_89b7567d948fc8::t_26aeda10896e1d 52
+  s_970a05f5e7a7cb::t_075ded113ba32e 130-136
+  s_89b7567d948fc8::t_ee58c6c34797ba 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "0c3b22c882ed1d186f7eb4213ba802c14f6bba75",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_172e6da076ab24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1dcc9f3ffezBYu1l45FPR3sW",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_34fbe9e4fa982a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1def1937fffeOFyQnkiwdXca31",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_38d82453ff02a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1debde321ffeaYJGubgp6tN2wt",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_3d518fc55c3d43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1aa6968ffegrgrK2vENyxF2I",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_3dc57505707618": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2c66965ffeJH6h4iRzpBY5aq",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_535f16a3ba159b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2bb2e76ffezL1EUHoO1uOXjT",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_5e7aed4b7169dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1ddfc28ffeKrHPNdbTEQ0BOa",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_5e9af090e6aaf4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2c18260ffeTUfGWB2jMiGWal",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_7abed94c8202c7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2b76320ffembSEueXnIEUIQb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_89b7567d948fc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1b7681bffe5Et4SNPngr0DSJ",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_8f61983dfac0a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1cd233bffefxcmmDpwVAlcyF",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_970a05f5e7a7cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1cbad06ffe8XxnBbiFioJuyB",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_aab0b21f408254": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1deff9d4dffd4NVDeK8bSqb5ap",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_b5b9e52a05ef0a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2cc2911ffevlDlQB3gIjv1K2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_bdb796f6752a1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1f5c040ffeexTmgEsfflUAuG",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_ca5c84babba8ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1deff8adcffeZJxjarJ14Ny0Ga",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_cc27706f9983d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e1d9af1dffeC49w66NGYPD0o7",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_d3a40b1a0630f5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2add84effeQwaWd9lckcRuXN",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_e146337c2c811e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1e2cf6d1dffeQ4fF1OaAo45BvQ",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_facc5adf85e923": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1e2ec6165ffeJWn1PPfrgDxlNf",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
