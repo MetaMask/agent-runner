@@ -2,7 +2,7 @@
 
 Reusable TypeScript runner for `@anthropic-ai/claude-agent-sdk` with optional Langfuse/OpenTelemetry lifecycle support.
 
-This package is intentionally thin: it wraps Claude Agent SDK `query({ prompt, options })`, collects streamed messages, surfaces result metadata, and exposes `flush()` / `shutdown()` so short-lived CI and eval processes do not lose telemetry spans.
+This package wraps the Claude Agent SDK `query()` behind a provider adapter, normalizes the streamed message types into a discriminated union, collects result metadata, and exposes `flush()` / `shutdown()` so short-lived CI and eval processes do not lose telemetry spans.
 
 ## Install
 
@@ -57,7 +57,7 @@ For LiteLLM proxy setup and model configuration, see the [LiteLLM docs](https://
 ## Minimal usage
 
 ```ts
-import { createAgentRunner } from '@metamask/agent-runner';
+import { createAgentRunner, formatMessage } from '@metamask/agent-runner';
 
 const runner = createAgentRunner();
 
@@ -69,7 +69,10 @@ const result = await runner.runAgent({
     disallowedTools: ['Bash(rm:*)'],
   },
   onMessage: (message) => {
-    console.log(message);
+    const line = formatMessage(message);
+    if (line !== null) {
+      process.stdout.write(line + '\n');
+    }
   },
 });
 
@@ -110,7 +113,85 @@ try {
 }
 ```
 
-Telemetry-enabled runs use a shallow mutable copy of `@anthropic-ai/claude-agent-sdk` manually instrumented with `ClaudeAgentSDKInstrumentation`, because ESM module namespace objects are read-only.
+## Architecture
+
+```
+src/
+  index.ts              Public API surface (re-exports)
+  runner.ts             createAgentRunner() factory and run loop
+  types.ts              All public type definitions
+  errors.ts             Error class hierarchy
+  adapters/
+    claude-adapter.ts   Claude SDK provider adapter
+  message-handler.ts    Telemetry-aware message handler (Langfuse spans)
+  message-parser.ts     SDK message content extraction and redaction
+  formatter.ts          Human-readable message formatting
+  telemetry.ts          OTel/Langfuse infrastructure lifecycle
+  tracing.ts            Langfuse span creation and trace propagation
+  env.ts                Telemetry config resolution from env vars
+```
+
+### Provider adapter pattern
+
+The runner is decoupled from the Claude SDK through the `ProviderAdapter` interface:
+
+```ts
+type ProviderAdapter = {
+  name: string;
+  run: (config: RunConfig) => AsyncIterable<AgentMessage>;
+};
+```
+
+The built-in `createClaudeAdapter()` wraps `query()` from `@anthropic-ai/claude-agent-sdk` and translates raw SDK messages into normalized `AgentMessage` types. Callers can supply a custom adapter via `createAgentRunner({ adapter })` to swap the underlying LLM provider without changing run logic.
+
+### Message normalization
+
+Raw SDK messages (snake_case, untyped `Record<string, unknown>`) are translated by the Claude adapter into a discriminated union of typed messages:
+
+| `AgentMessage.type` | Source SDK type           | Description                                                      |
+| ------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `init`              | `system` (subtype `init`) | Session start with model and available tools                     |
+| `generation`        | `assistant`               | Model output with text, tool calls, token usage, and stop reason |
+| `tool_result`       | `user`                    | Tool execution result (one per parallel tool result block)       |
+| `result`            | `result`                  | Final run outcome with cost, turns, and duration                 |
+| `system`            | `system`                  | Internal SDK events (status, retries, task progress)             |
+| `tool_progress`     | `tool_progress`           | Long-running tool heartbeat                                      |
+| `tool_use_summary`  | `tool_use_summary`        | Human-readable tool execution summary                            |
+| `rate_limit`        | `rate_limit_event`        | API rate limit notification                                      |
+
+All message types carry an optional `raw` field with the original SDK message for debugging.
+
+### Telemetry infrastructure
+
+When telemetry is enabled, the runner creates shared OTel/Langfuse infrastructure with reference counting:
+
+1. A `NodeSDK` instance with a `LangfuseSpanProcessor` starts on the first `createAgentRunner({ telemetry: { mode: 'enabled' } })` call.
+2. Subsequent runners with matching config reuse the same infrastructure (ref count incremented).
+3. `shutdown()` decrements the ref count; infrastructure is torn down when the last runner shuts down.
+4. Mismatched telemetry configs across concurrent runners throw `TelemetryConfigurationError`.
+
+The `createMessageHandler()` builds a span tree per run:
+
+```
+agent-runner (root session span)
+  ├── generation (one per model turn, with token usage OTel attributes)
+  │     ├── tool:Bash: ls -la  (pending until tool_result arrives)
+  │     └── tool:Read: index.ts
+  └── generation
+        └── ...
+```
+
+When `redact: true` is set on telemetry config, prompts and tool I/O are replaced with `[REDACTED]` in spans. Sensitive keys (`password`, `secret`, `srp`, `mnemonic`, `privatekey`, `token`, `apikey`, etc.) are recursively redacted from tool inputs regardless of the redact flag.
+
+### Error handling
+
+Three error classes form a hierarchy rooted at `AgentRunnerError`:
+
+- **`AgentRunnerError`** — base class for all runner failures.
+- **`TelemetryConfigurationError`** — missing or invalid Langfuse/OTel config.
+- **`MessageHandlerError`** — wraps errors thrown by the `onMessage` callback. When `onMessage` throws, the run terminates early and the error is captured in `result.error`.
+
+The run loop catches all errors and returns them in the result rather than throwing, so callers always get a partial result with `isPartial: true` and `error` populated.
 
 ## API
 
@@ -118,29 +199,107 @@ Telemetry-enabled runs use a shallow mutable copy of `@anthropic-ai/claude-agent
 
 Creates a runner with:
 
-- `runAgent(options)` — executes Claude SDK `query()`, streams messages to `onMessage`, and returns collected messages plus result metadata.
+- `runAgent(options)` — executes the provider adapter, streams messages to `onMessage`, and returns collected messages plus result metadata.
 - `flush()` — force-flushes telemetry processors when telemetry is enabled; no-op otherwise.
 - `shutdown()` — shuts down telemetry when enabled; no-op otherwise.
 - `enabled` — boolean indicating whether telemetry is active.
 
-### `runAgent()` result
+#### `AgentRunnerConfig`
 
-The result includes:
+| Field            | Type                          | Description                                        |
+| ---------------- | ----------------------------- | -------------------------------------------------- |
+| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.        |
+| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                       |
+| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter. |
 
-- `messages` — all SDK messages emitted by the async generator.
-- `resultMessage` — final SDK result message when emitted.
-- `sessionId` — extracted from `session_id` on the result message.
-- `totalCostUsd` — extracted from `total_cost_usd` on the result message.
-- `durationMs` — wall-clock duration for the run.
-- `metadata` — timestamps and message count.
+### `runAgent(options)`
 
-## Extension and mm CLI integration notes
+#### `AgentRunOptions`
 
-This MVP is deliberately not coupled to MetaMask Extension internals, `mm`, or `@metamask/client-mcp-core`. Future adapters can sit above this package and provide:
+| Field       | Type                          | Description                                                                                |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `prompt`    | `string \| object`            | The prompt to send to the agent.                                                           |
+| `options`   | `Partial<ClaudeQueryOptions>` | Per-run query options merged over runner defaults.                                         |
+| `onMessage` | `RunnerMessageHandler`        | Callback invoked for each streamed message.                                                |
+| `telemetry` | `AgentRunTelemetryAttributes` | Per-run Langfuse trace attributes (traceName, userId, sessionId, tags, version, metadata). |
 
-- preconfigured `cwd`, tools, MCP servers, hooks, and permission callbacks;
-- Extension worktree/session naming conventions;
-- Knowledge Store or evaluation callbacks;
-- mm CLI orchestration around `runAgent()`.
+#### `AgentRunResult`
 
-Keep those adapters outside this core runner so the npm package remains reusable for generic Claude Agent SDK execution.
+| Field           | Type             | Description                                                         |
+| --------------- | ---------------- | ------------------------------------------------------------------- |
+| `messages`      | `AgentMessage[]` | All messages emitted during the run.                                |
+| `resultMessage` | `AgentMessage`   | Final result message, if one was emitted.                           |
+| `sessionId`     | `string`         | Agent session identifier from the init message.                     |
+| `totalCostUsd`  | `number`         | Total API cost in US dollars.                                       |
+| `durationMs`    | `number`         | Wall-clock duration of the run in milliseconds.                     |
+| `error`         | `Error`          | Error that terminated the run, if any.                              |
+| `isPartial`     | `boolean`        | Whether the run was interrupted before the agent finished.          |
+| `metadata`      | `object`         | `{ startedAt, endedAt, messageCount }` — timing and count metadata. |
+
+### `formatMessage(message)`
+
+Formats an `AgentMessage` for human-readable console output. Returns `null` for messages that should be skipped (empty content, internal bookkeeping).
+
+```ts
+import { formatMessage } from '@metamask/agent-runner';
+
+// Typical output:
+// [init] model=claude-sonnet-4-20250514 tools=12
+// [tool_use] Bash: npm test
+// [tool_output] All tests passed.
+// [result] done in 5 turns ($0.0342)
+```
+
+### Exported error classes
+
+```ts
+import {
+  AgentRunnerError,
+  TelemetryConfigurationError,
+  MessageHandlerError,
+} from '@metamask/agent-runner';
+```
+
+### Exported types
+
+```ts
+import type {
+  AgentMessage,
+  AgentRunOptions,
+  AgentRunResult,
+  AgentRunTelemetryAttributes,
+  AgentRunner,
+  AgentRunnerConfig,
+  RunnerMessageHandler,
+  TelemetryConfig,
+  TelemetryLifecycle,
+  TokenUsage,
+  ToolCall,
+} from '@metamask/agent-runner';
+```
+
+## Coding patterns
+
+### Pure functions over classes
+
+The codebase uses factory functions (`createAgentRunner`, `createClaudeAdapter`, `createMessageHandler`, `createTelemetryController`) that return plain object interfaces. No `class` or `this` — state is captured via closures.
+
+### Discriminated unions for messages
+
+All agent messages use `type` as the discriminant field. Consumers switch on `message.type` for exhaustive handling. Each variant is a separate named type (`AgentInitMessage`, `AgentGenerationMessage`, etc.) unioned into `AgentMessage`.
+
+### Defensive SDK boundary
+
+The Claude adapter treats all SDK values as `Record<string, unknown>` and uses safe accessor helpers (`getString`, `getNumber`, `getOptionalString`, `getRecord`, etc.) to extract fields. This prevents runtime crashes from SDK wire-format changes.
+
+### Spread-optional pattern
+
+Optional fields on message types are conditionally included via `spreadOptional(key, value)`, which returns `{ [key]: value }` when defined or `{}` otherwise. This avoids setting fields to `undefined` and keeps serialized output clean.
+
+### Best-effort telemetry
+
+Telemetry failures never crash agent runs. All tracing calls are wrapped in try/catch at the runner level, and the `traceSpan` helper silently swallows errors from `propagateAttributes`. Span finalization (`finalizePendingTools`, `finalizeSessionSpan`) runs in `finally` blocks.
+
+### Dual CJS/ESM output
+
+The package builds both CommonJS and ESM via `@ts-bridge/cli` and uses conditional `exports` in `package.json` so consumers get the right format automatically.
