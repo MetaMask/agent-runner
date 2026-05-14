@@ -1,6 +1,8 @@
 import { createClaudeAdapter } from './adapters/claude-adapter.js';
 import { AgentRunnerError, MessageHandlerError } from './errors.js';
+import { executeJudge } from './judge.js';
 import { createMessageHandler } from './message-handler.js';
+import { postScores as postScoresToLangfuse } from './scoring.js';
 import { createTelemetryController } from './telemetry.js';
 import type {
   AgentMessage,
@@ -9,8 +11,13 @@ import type {
   AgentRunner,
   AgentRunnerConfig,
   ClaudeQueryOptions,
+  JudgeConfig,
+  JudgeContext,
+  JudgeOptions,
+  JudgeResult,
   ProviderAdapter,
   RunConfig,
+  ScoreEntry,
 } from './types.js';
 
 /**
@@ -29,6 +36,7 @@ function defaultQueryOptions(): Partial<ClaudeQueryOptions> {
  * @param startedAtMs - Run start timestamp in milliseconds.
  * @param endedAtMs - Run end timestamp in milliseconds.
  * @param error - Optional error if the run failed or was interrupted.
+ * @param traceId - Optional Langfuse trace identifier from the telemetry handler.
  * @returns The structured agent run result.
  */
 function createResult(
@@ -36,6 +44,7 @@ function createResult(
   startedAtMs: number,
   endedAtMs: number,
   error?: Error,
+  traceId?: string,
 ): AgentRunResult {
   const resultMessage = [...messages]
     .reverse()
@@ -48,6 +57,7 @@ function createResult(
     messages,
     resultMessage,
     sessionId,
+    traceId,
     totalCostUsd:
       resultMessage?.type === 'result' ? resultMessage.costUsd : undefined,
     durationMs: endedAtMs - startedAtMs,
@@ -152,7 +162,66 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
         }
       }
 
-      return createResult(messages, startedAtMs, Date.now(), runError);
+      const handlerTraceId = handler?.getState().traceId;
+      return createResult(
+        messages,
+        startedAtMs,
+        Date.now(),
+        runError,
+        handlerTraceId,
+      );
+    },
+    /**
+     * Runs an LLM-as-a-judge evaluation, optionally posting scores to telemetry.
+     *
+     * @param runResult - The completed agent run to evaluate.
+     * @param judgeConfig - Judge configuration including rubric and score schema.
+     * @param context - Optional task context forwarded to the judge prompt.
+     * @param options - Judge options including score posting and message callback.
+     * @returns The judge evaluation result with scores and reasoning.
+     */
+    judge: async (
+      runResult: AgentRunResult,
+      judgeConfig: JudgeConfig,
+      context?: JudgeContext,
+      options?: JudgeOptions,
+    ): Promise<JudgeResult> => {
+      const result = await executeJudge(
+        runResult,
+        judgeConfig,
+        context,
+        options?.onMessage,
+      );
+
+      if (options?.postScores && telemetry.enabled && runResult.traceId) {
+        const scoreEntries: ScoreEntry[] = Object.entries(result.scores).map(
+          ([name, value]) => ({
+            name: `judge_${name}`,
+            value,
+            comment: result.reasoning,
+          }),
+        );
+
+        await postScoresToLangfuse(
+          runResult.traceId,
+          scoreEntries,
+          config.telemetry,
+        );
+      }
+
+      return result;
+    },
+    /**
+     * Posts scores to the telemetry backend for a completed agent run.
+     *
+     * @param runResult - The agent run result whose trace receives the scores.
+     * @param scores - Score entries to post.
+     */
+    postScores: async (
+      runResult: AgentRunResult,
+      scores: ScoreEntry[],
+    ): Promise<void> => {
+      await postScoresToLangfuse(runResult.traceId, scores, config.telemetry);
     },
   };
 }

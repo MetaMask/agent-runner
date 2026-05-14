@@ -1,8 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MessageHandlerError, TelemetryConfigurationError } from './errors.js';
 import { createAgentRunner } from './runner.js';
-import type { AgentMessage, ProviderAdapter } from './types.js';
+import type {
+  AgentMessage,
+  AgentRunResult,
+  JudgeConfig,
+  JudgeResult,
+  ProviderAdapter,
+  ScoreEntry,
+} from './types.js';
+
+const judgeMocks = vi.hoisted(() => ({
+  executeJudge: vi.fn(),
+}));
+
+const scoringMocks = vi.hoisted(() => ({
+  postScores: vi.fn(),
+}));
+
+vi.mock('./judge.js', () => ({
+  executeJudge: judgeMocks.executeJudge,
+}));
+
+vi.mock('./scoring.js', () => ({
+  postScores: scoringMocks.postScores,
+}));
 
 /** Mock adapter with captured run call arguments. */
 type MockAdapter = {
@@ -312,5 +335,181 @@ describe('createAgentRunner', () => {
     expect(result.isPartial).toBe(true);
     expect(result.error).not.toBeInstanceOf(MessageHandlerError);
     expect(result.error?.message).toBe('raw string adapter error');
+  });
+
+  describe('judge', () => {
+    const judgeRunResult: AgentRunResult = {
+      messages: [
+        { type: 'init', sessionId: 'sess-1', model: 'mock-model', tools: [] },
+        { type: 'result', success: true, costUsd: 0.01 },
+      ],
+      resultMessage: { type: 'result', success: true, costUsd: 0.01 },
+      sessionId: 'sess-1',
+      traceId: 'trace-abc',
+      totalCostUsd: 0.01,
+      durationMs: 100,
+      isPartial: false,
+      metadata: {
+        startedAt: '2025-01-01T00:00:00Z',
+        endedAt: '2025-01-01T00:00:01Z',
+        messageCount: 2,
+      },
+    };
+
+    const judgeConfig: JudgeConfig = {
+      rubric: 'Evaluate quality.',
+      scoreFields: [
+        { name: 'quality', min: 0, max: 10 },
+        { name: 'accuracy', min: 0, max: 5 },
+      ],
+    };
+
+    const judgeResult: JudgeResult = {
+      scores: { quality: 8, accuracy: 4 },
+      reasoning: 'Solid work.',
+      raw: '{"quality":8,"accuracy":4,"reasoning":"Solid work."}',
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      judgeMocks.executeJudge.mockResolvedValue(judgeResult);
+      scoringMocks.postScores.mockResolvedValue(undefined);
+    });
+
+    it('returns the judge evaluation result', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({ adapter });
+
+      const result = await runner.judge(judgeRunResult, judgeConfig);
+
+      expect(result).toStrictEqual(judgeResult);
+      expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        judgeRunResult,
+        judgeConfig,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('forwards context to executeJudge', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({ adapter });
+      const context = { taskPrompt: 'Fix the bug', status: 'success' };
+
+      await runner.judge(judgeRunResult, judgeConfig, context);
+
+      expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        judgeRunResult,
+        judgeConfig,
+        context,
+        undefined,
+      );
+    });
+
+    it('does not post scores when postScores option is not set', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({
+        adapter,
+        telemetry: {
+          mode: 'enabled',
+          publicKey: 'pk-test',
+          secretKey: 'sk-test',
+          baseUrl: 'https://langfuse.example.com',
+        },
+      });
+
+      await runner.judge(judgeRunResult, judgeConfig);
+
+      expect(scoringMocks.postScores).not.toHaveBeenCalled();
+    });
+
+    it('does not post scores when telemetry is disabled', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({
+        adapter,
+        telemetry: { mode: 'disabled' },
+      });
+
+      await runner.judge(judgeRunResult, judgeConfig, undefined, {
+        postScores: true,
+      });
+
+      expect(scoringMocks.postScores).not.toHaveBeenCalled();
+    });
+
+    it('does not post scores when traceId is missing', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({ adapter });
+      const resultWithoutTrace = { ...judgeRunResult, traceId: undefined };
+
+      await runner.judge(resultWithoutTrace, judgeConfig, undefined, {
+        postScores: true,
+      });
+
+      expect(scoringMocks.postScores).not.toHaveBeenCalled();
+    });
+
+    it('posts judge-prefixed scores when postScores option is true', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({
+        adapter,
+        telemetry: {
+          mode: 'enabled',
+          publicKey: 'pk-test',
+          secretKey: 'sk-test',
+          baseUrl: 'https://langfuse.example.com',
+        },
+      });
+
+      await runner.judge(judgeRunResult, judgeConfig, undefined, {
+        postScores: true,
+      });
+
+      expect(scoringMocks.postScores).toHaveBeenCalledOnce();
+      const [traceId, entries, telConfig] = scoringMocks.postScores.mock
+        .calls[0] as [string, ScoreEntry[], unknown];
+      expect(traceId).toBe('trace-abc');
+      expect(entries).toStrictEqual([
+        { name: 'judge_quality', value: 8, comment: 'Solid work.' },
+        { name: 'judge_accuracy', value: 4, comment: 'Solid work.' },
+      ]);
+      expect(telConfig).toStrictEqual(
+        expect.objectContaining({ mode: 'enabled' }),
+      );
+    });
+  });
+
+  describe('postScores', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      scoringMocks.postScores.mockResolvedValue(undefined);
+    });
+
+    it('delegates to the scoring module', async () => {
+      const { adapter } = createMockAdapter();
+      const runner = createAgentRunner({ adapter });
+      const runResult: AgentRunResult = {
+        messages: [],
+        sessionId: 'sess-1',
+        traceId: 'trace-xyz',
+        totalCostUsd: 0,
+        durationMs: 0,
+        isPartial: false,
+        metadata: {
+          startedAt: '2025-01-01T00:00:00Z',
+          endedAt: '2025-01-01T00:00:01Z',
+          messageCount: 0,
+        },
+      };
+      const scores: ScoreEntry[] = [{ name: 'custom', value: 7 }];
+
+      await runner.postScores(runResult, scores);
+
+      expect(scoringMocks.postScores).toHaveBeenCalledWith(
+        'trace-xyz',
+        scores,
+        undefined,
+      );
+    });
   });
 });
