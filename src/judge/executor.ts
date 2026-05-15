@@ -47,7 +47,8 @@ function escapeXml(text: string): string {
  * @returns A normalized agent result message.
  */
 function translateRawResultMessage(raw: Record<string, unknown>): AgentMessage {
-  const hasStructuredOutput = raw.structured_output !== null;
+  const hasStructuredOutput =
+    raw.structured_output !== null && raw.structured_output !== undefined;
 
   let result;
 
