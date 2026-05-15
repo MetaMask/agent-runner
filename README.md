@@ -208,10 +208,13 @@ const result = await runner.runAgent({ prompt: 'Fix the login bug.' });
 
 const verdict = await runner.judge(result, judgeConfig, {
   taskPrompt: 'Fix the login bug.',
-  status: result.resultMessage?.type === 'result' && result.resultMessage.success ? 'success' : 'failure',
+  status:
+    result.resultMessage?.type === 'result' && result.resultMessage.success
+      ? 'success'
+      : 'failure',
 });
 
-console.log(verdict.scores);    // { correctness: 8, completeness: 7 }
+console.log(verdict.scores); // { correctness: 8, completeness: 7 }
 console.log(verdict.reasoning); // "The agent correctly identified..."
 ```
 
@@ -299,33 +302,33 @@ Evaluates a completed agent run using a second LLM pass.
 
 #### `JudgeConfig`
 
-| Field          | Type                          | Description                                                                 |
-| -------------- | ----------------------------- | --------------------------------------------------------------------------- |
-| `rubric`       | `string`                      | System prompt / evaluation rubric for the judge.                            |
-| `scoreFields`  | `JudgeScoreField[]`           | Score dimensions with `name`, `min`, and `max`.                             |
+| Field          | Type                          | Description                                                                                        |
+| -------------- | ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `rubric`       | `string`                      | System prompt / evaluation rubric for the judge.                                                   |
+| `scoreFields`  | `JudgeScoreField[]`           | Score dimensions with `name`, `min`, and `max`.                                                    |
 | `queryOptions` | `Partial<ClaudeQueryOptions>` | Optional SDK query options (defaults: model `claude-sonnet-4-20250514`, tools `[]`, maxTurns `5`). |
 
 #### `JudgeContext`
 
-| Field       | Type     | Description                                          |
-| ----------- | -------- | ---------------------------------------------------- |
-| `taskPrompt`| `string` | The original task prompt given to the agent.         |
-| `status`    | `string` | The terminal status or outcome of the agent run.     |
+| Field        | Type     | Description                                      |
+| ------------ | -------- | ------------------------------------------------ |
+| `taskPrompt` | `string` | The original task prompt given to the agent.     |
+| `status`     | `string` | The terminal status or outcome of the agent run. |
 
 #### `JudgeOptions`
 
-| Field        | Type                   | Description                                                                 |
-| ------------ | ---------------------- | --------------------------------------------------------------------------- |
-| `postScores` | `boolean`              | When `true`, posts scores to Langfuse after evaluation. Defaults to `false`.|
-| `onMessage`  | `RunnerMessageHandler` | Callback invoked for each raw SDK message during the judge run.             |
+| Field        | Type                   | Description                                                                  |
+| ------------ | ---------------------- | ---------------------------------------------------------------------------- |
+| `postScores` | `boolean`              | When `true`, posts scores to Langfuse after evaluation. Defaults to `false`. |
+| `onMessage`  | `RunnerMessageHandler` | Callback invoked for each raw SDK message during the judge run.              |
 
 #### `JudgeResult`
 
-| Field       | Type                    | Description                            |
-| ----------- | ----------------------- | -------------------------------------- |
-| `scores`    | `Record<string, number>`| Scores keyed by dimension name.        |
-| `reasoning` | `string`                | The judge's reasoning explanation.     |
-| `raw`       | `string`                | Raw JSON response from the judge model.|
+| Field       | Type                     | Description                             |
+| ----------- | ------------------------ | --------------------------------------- |
+| `scores`    | `Record<string, number>` | Scores keyed by dimension name.         |
+| `reasoning` | `string`                 | The judge's reasoning explanation.      |
+| `raw`       | `string`                 | Raw JSON response from the judge model. |
 
 ### `postScores(runResult, scores)`
 
@@ -333,11 +336,11 @@ Posts score entries to the telemetry backend for a completed agent run. No-op wh
 
 #### `ScoreEntry`
 
-| Field     | Type     | Description                       |
-| --------- | -------- | --------------------------------- |
-| `name`    | `string` | Name of the score dimension.      |
-| `value`   | `number` | Numeric score value.              |
-| `comment` | `string` | Optional comment or reasoning.    |
+| Field     | Type     | Description                    |
+| --------- | -------- | ------------------------------ |
+| `name`    | `string` | Name of the score dimension.   |
+| `value`   | `number` | Numeric score value.           |
+| `comment` | `string` | Optional comment or reasoning. |
 
 ### Exported error classes
 
