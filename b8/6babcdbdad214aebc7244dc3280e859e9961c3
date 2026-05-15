@@ -1,0 +1,14 @@
+.github/CODEOWNERS
+  h_d6a04d82b61d5e 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "b86babcdbdad214aebc7244dc3280e859e9961c3",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
