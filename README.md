@@ -121,14 +121,22 @@ src/
   runner.ts             createAgentRunner() factory and run loop
   types.ts              All public type definitions
   errors.ts             Error class hierarchy
-  adapters/
-    claude-adapter.ts   Claude SDK provider adapter
-  message-handler.ts    Telemetry-aware message handler (Langfuse spans)
   message-parser.ts     SDK message content extraction and redaction
   formatter.ts          Human-readable message formatting
-  telemetry.ts          OTel/Langfuse infrastructure lifecycle
-  tracing.ts            Langfuse span creation and trace propagation
-  env.ts                Telemetry config resolution from env vars
+  adapters/
+    claude-adapter.ts   Claude SDK provider adapter
+    sdk-accessors.ts    Type-safe accessors for raw SDK message fields
+  telemetry/
+    index.ts            Barrel re-exports for telemetry module
+    controller.ts       OTel/Langfuse infrastructure lifecycle
+    message-handler.ts  Telemetry-aware message handler (Langfuse spans)
+    tracing.ts          Langfuse span creation and trace propagation
+    env.ts              Telemetry config resolution from env vars
+  judge/
+    index.ts            Barrel re-exports for judge module
+    executor.ts         LLM-as-a-judge evaluation runner
+    scoring.ts          Langfuse score posting
+    types.ts            Judge type definitions
 ```
 
 ### Provider adapter pattern
@@ -183,13 +191,45 @@ agent-runner (root session span)
 
 When `redact: true` is set on telemetry config, prompts and tool I/O are replaced with `[REDACTED]` in spans. Sensitive keys (`password`, `secret`, `srp`, `mnemonic`, `privatekey`, `token`, `apikey`, etc.) are recursively redacted from tool inputs regardless of the redact flag.
 
+### LLM-as-a-judge
+
+The runner exposes a `judge()` method that runs a second LLM pass to evaluate a completed agent run. The judge receives the full message transcript, a rubric (system prompt), and a structured output schema derived from the configured score fields.
+
+```ts
+const judgeConfig: JudgeConfig = {
+  rubric: 'Evaluate the agent run on correctness and completeness.',
+  scoreFields: [
+    { name: 'correctness', min: 0, max: 10 },
+    { name: 'completeness', min: 0, max: 10 },
+  ],
+};
+
+const result = await runner.runAgent({ prompt: 'Fix the login bug.' });
+
+const verdict = await runner.judge(result, judgeConfig, {
+  taskPrompt: 'Fix the login bug.',
+  status: result.resultMessage?.type === 'result' && result.resultMessage.success ? 'success' : 'failure',
+});
+
+console.log(verdict.scores);    // { correctness: 8, completeness: 7 }
+console.log(verdict.reasoning); // "The agent correctly identified..."
+```
+
+Key design points:
+
+- **Structured output** — the judge's score fields are compiled into a JSON schema and passed via the SDK `outputFormat` option. The response is parsed and validated against the declared ranges.
+- **Prompt injection defence** — all untrusted content (transcript, task prompt, outcome) is XML-escaped and wrapped in delimited tags with an explicit instruction to treat tagged content as evidence, not instructions.
+- **Telemetry integration** — when `options.postScores` is `true` and telemetry is enabled, scores are posted to Langfuse on the agent run's trace via `runner.postScores()`.
+- **Best-effort scoring** — score posting failures are silently swallowed to match the runner's telemetry contract.
+
 ### Error handling
 
-Three error classes form a hierarchy rooted at `AgentRunnerError`:
+Four error classes form a hierarchy rooted at `AgentRunnerError`:
 
 - **`AgentRunnerError`** — base class for all runner failures.
 - **`TelemetryConfigurationError`** — missing or invalid Langfuse/OTel config.
 - **`MessageHandlerError`** — wraps errors thrown by the `onMessage` callback. When `onMessage` throws, the run terminates early and the error is captured in `result.error`.
+- **`JudgeError`** — thrown when an LLM-as-a-judge evaluation fails (invalid config, parse failure, non-success termination, or `onMessage` callback error).
 
 The run loop catches all errors and returns them in the result rather than throwing, so callers always get a partial result with `isPartial: true` and `error` populated.
 
@@ -200,6 +240,8 @@ The run loop catches all errors and returns them in the result rather than throw
 Creates a runner with:
 
 - `runAgent(options)` — executes the provider adapter, streams messages to `onMessage`, and returns collected messages plus result metadata.
+- `judge(runResult, judgeConfig, context?, options?)` — runs an LLM-as-a-judge evaluation on a completed agent run. Optionally posts scores to Langfuse when `options.postScores` is `true`.
+- `postScores(runResult, scores)` — posts score entries to the telemetry backend for a completed agent run.
 - `flush()` — force-flushes telemetry processors when telemetry is enabled; no-op otherwise.
 - `shutdown()` — shuts down telemetry when enabled; no-op otherwise.
 - `enabled` — boolean indicating whether telemetry is active.
@@ -230,6 +272,7 @@ Creates a runner with:
 | `messages`      | `AgentMessage[]` | All messages emitted during the run.                                |
 | `resultMessage` | `AgentMessage`   | Final result message, if one was emitted.                           |
 | `sessionId`     | `string`         | Agent session identifier from the init message.                     |
+| `traceId`       | `string`         | Langfuse trace identifier for score posting and linking.            |
 | `totalCostUsd`  | `number`         | Total API cost in US dollars.                                       |
 | `durationMs`    | `number`         | Wall-clock duration of the run in milliseconds.                     |
 | `error`         | `Error`          | Error that terminated the run, if any.                              |
@@ -250,6 +293,52 @@ import { formatMessage } from '@metamask/agent-runner';
 // [result] done in 5 turns ($0.0342)
 ```
 
+### `judge(runResult, judgeConfig, context?, options?)`
+
+Evaluates a completed agent run using a second LLM pass.
+
+#### `JudgeConfig`
+
+| Field          | Type                          | Description                                                                 |
+| -------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| `rubric`       | `string`                      | System prompt / evaluation rubric for the judge.                            |
+| `scoreFields`  | `JudgeScoreField[]`           | Score dimensions with `name`, `min`, and `max`.                             |
+| `queryOptions` | `Partial<ClaudeQueryOptions>` | Optional SDK query options (defaults: model `claude-sonnet-4-20250514`, tools `[]`, maxTurns `5`). |
+
+#### `JudgeContext`
+
+| Field       | Type     | Description                                          |
+| ----------- | -------- | ---------------------------------------------------- |
+| `taskPrompt`| `string` | The original task prompt given to the agent.         |
+| `status`    | `string` | The terminal status or outcome of the agent run.     |
+
+#### `JudgeOptions`
+
+| Field        | Type                   | Description                                                                 |
+| ------------ | ---------------------- | --------------------------------------------------------------------------- |
+| `postScores` | `boolean`              | When `true`, posts scores to Langfuse after evaluation. Defaults to `false`.|
+| `onMessage`  | `RunnerMessageHandler` | Callback invoked for each raw SDK message during the judge run.             |
+
+#### `JudgeResult`
+
+| Field       | Type                    | Description                            |
+| ----------- | ----------------------- | -------------------------------------- |
+| `scores`    | `Record<string, number>`| Scores keyed by dimension name.        |
+| `reasoning` | `string`                | The judge's reasoning explanation.     |
+| `raw`       | `string`                | Raw JSON response from the judge model.|
+
+### `postScores(runResult, scores)`
+
+Posts score entries to the telemetry backend for a completed agent run. No-op when telemetry is disabled, the trace ID is missing, or the scores array is empty.
+
+#### `ScoreEntry`
+
+| Field     | Type     | Description                       |
+| --------- | -------- | --------------------------------- |
+| `name`    | `string` | Name of the score dimension.      |
+| `value`   | `number` | Numeric score value.              |
+| `comment` | `string` | Optional comment or reasoning.    |
+
 ### Exported error classes
 
 ```ts
@@ -257,6 +346,7 @@ import {
   AgentRunnerError,
   TelemetryConfigurationError,
   MessageHandlerError,
+  JudgeError,
 } from '@metamask/agent-runner';
 ```
 
@@ -270,7 +360,13 @@ import type {
   AgentRunTelemetryAttributes,
   AgentRunner,
   AgentRunnerConfig,
+  JudgeConfig,
+  JudgeContext,
+  JudgeOptions,
+  JudgeResult,
+  JudgeScoreField,
   RunnerMessageHandler,
+  ScoreEntry,
   TelemetryConfig,
   TelemetryLifecycle,
   TokenUsage,
