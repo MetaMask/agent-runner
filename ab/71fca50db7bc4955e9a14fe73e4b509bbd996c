@@ -1,0 +1,24 @@
+README.md
+  s_52ebabed5e23ab::t_1925e9ff5ef886 363-367,369
+  s_52ebabed5e23ab::t_942e51789bbe3a 296-341,349
+  s_52ebabed5e23ab::t_c818848ac00f46 243-244
+  s_52ebabed5e23ab::t_182342b137ca78 194-224,227,232
+  s_52ebabed5e23ab::t_37fa787e6bdaba 275
+  s_52ebabed5e23ab::t_a9117750ec4f4d 126-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ab71fca50db7bc4955e9a14fe73e4b509bbd996c",
+  "prompts": {},
+  "sessions": {
+    "s_52ebabed5e23ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1d4bc8af0ffeWyoqilXKO1iMV6",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
