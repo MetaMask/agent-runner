@@ -1,0 +1,24 @@
+src/judge/executor.ts
+  s_749dd6bcafe6d5::t_7d51610f4d3e49 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "6d8d2fb510184a2a9fa34123ee6a1761a8c4d335",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_749dd6bcafe6d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1d4b36c2cffeGtmJWTyEXS92oL",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
