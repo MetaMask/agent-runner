@@ -1,0 +1,59 @@
+src/telemetry/controller.ts
+  s_70ec41b34b0fa9::t_489df8f91a7b3d 5-6
+src/telemetry/index.ts
+  s_70ec41b34b0fa9::t_12d72bdddcc4c0 1-18,20
+src/judge/types.ts
+  s_70ec41b34b0fa9::t_42f4a291fb7583 1-83
+src/judge/scoring.test.ts
+  s_70ec41b34b0fa9::t_76441056e98f23 3-5
+  s_70ec41b34b0fa9::t_62849085ea7406 11
+src/telemetry/message-handler.test.ts
+  s_70ec41b34b0fa9::t_676867cc5ae7eb 44
+  s_70ec41b34b0fa9::t_a204f5b52109cd 3
+src/adapters/claude-adapter.ts
+  s_70ec41b34b0fa9::t_d8ccadbb0e5346 11-19
+src/judge/executor.ts
+  s_70ec41b34b0fa9::t_b934c8c17b6c1f 3-7,9
+src/telemetry/tracing.test.ts
+  s_70ec41b34b0fa9::t_8519aac65d3c6d 4
+src/runner.test.ts
+  s_70ec41b34b0fa9::t_366e964163ab5c 16,20
+  s_70ec41b34b0fa9::t_993eeea1ace187 4
+src/judge/executor.test.ts
+  s_70ec41b34b0fa9::t_0ba531a6c14c98 3-6
+src/telemetry/message-handler.ts
+  s_70ec41b34b0fa9::t_6ab3728c713049 1-2
+src/judge/scoring.ts
+  s_70ec41b34b0fa9::t_b13bb2d34b2ea1 3-5
+src/runner.ts
+  s_70ec41b34b0fa9::t_66f7d01f563fb7 3-12
+src/adapters/sdk-accessors.ts
+  s_70ec41b34b0fa9::t_45a762e0aca895 1-86
+src/types.ts
+  s_70ec41b34b0fa9::t_2115f149e09d50 12-19
+  s_70ec41b34b0fa9::t_2a6afd3ebed0b8 4-9
+src/telemetry/env.ts
+  s_70ec41b34b0fa9::t_5b7a1a9568354b 1-2
+src/telemetry/controller.test.ts
+  s_70ec41b34b0fa9::t_bd4bc584cd15db 139-318
+  s_70ec41b34b0fa9::t_b907f07ba98858 3
+  s_70ec41b34b0fa9::t_70f67f6467fa81 58
+src/judge/index.ts
+  s_70ec41b34b0fa9::t_30946953fe3f21 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4c12c62bfaba2f0996e06b5b0d86fd6c21d78a51",
+  "prompts": {},
+  "sessions": {
+    "s_70ec41b34b0fa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1d75260aaffefA0yJzMssD1j9Y",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
