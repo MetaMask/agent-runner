@@ -1,8 +1,8 @@
 import { SpanStatusCode } from '@opentelemetry/api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TelemetryConfigurationError } from '../errors.js';
 import { isTelemetryEnabled, resolveTelemetryConfig } from './env.js';
-import { TelemetryConfigurationError } from './errors.js';
 import {
   createSessionSpan,
   flushTracing,

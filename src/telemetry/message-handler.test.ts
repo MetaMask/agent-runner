@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AgentMessage } from '../types.js';
 import { createMessageHandler } from './message-handler.js';
-import type { AgentMessage } from './types.js';
 
 const tracingMocks = vi.hoisted(() => {
   /** Mock span calls captured for assertions. */
@@ -41,7 +41,7 @@ const tracingMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./tracing.js', () => ({
+vi.mock('../telemetry/tracing.js', () => ({
   traceSpan: tracingMocks.traceSpan,
   createSessionSpan: tracingMocks.createSessionSpan,
   setOtelAttrs: tracingMocks.setOtelAttrs,

@@ -44,3 +44,19 @@ export class MessageHandlerError extends AgentRunnerError {
     this.name = 'MessageHandlerError';
   }
 }
+
+/**
+ * Thrown when an LLM-as-a-judge evaluation fails.
+ */
+export class JudgeError extends AgentRunnerError {
+  /**
+   * Creates a JudgeError.
+   *
+   * @param message - The error message.
+   * @param options - Standard error options.
+   */
+  public constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'JudgeError';
+  }
+}

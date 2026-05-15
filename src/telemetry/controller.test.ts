@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentMessage, ProviderAdapter } from './types.js';
+import type { AgentMessage, ProviderAdapter } from '../types.js';
 
 const telemetryMocks = vi.hoisted(() => ({
   forceFlush: vi.fn<() => Promise<void>>(async () => undefined),
@@ -55,7 +55,7 @@ vi.mock('@opentelemetry/sdk-node', () => ({
   },
 }));
 
-vi.mock('./tracing.js', () => ({
+vi.mock('../telemetry/tracing.js', () => ({
   setLangfuseProcessor: telemetryMocks.setLangfuseProcessor,
   traceSpan: vi.fn(),
   createSessionSpan: vi.fn(),
@@ -136,7 +136,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('starts telemetry and delegates flush and shutdown', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
       adapter,
@@ -167,7 +167,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('passes run config through the injected adapter when telemetry is enabled', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { runCalls, adapter } = createMockAdapter();
     const runner = createAgentRunner({
       adapter,
@@ -188,7 +188,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('returns partial result when agent run fails under telemetry', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const adapterError = new Error('Adapter connection failed');
     const adapter: ProviderAdapter = {
       name: 'mock',
@@ -219,7 +219,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('does not mark successful runs as partial under telemetry', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
       adapter,
@@ -238,7 +238,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('shares telemetry infra when two runners use the same config', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter: adapterA } = createMockAdapter();
     const { adapter: adapterB } = createMockAdapter();
 
@@ -267,7 +267,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('rejects a second runner with a different telemetry config', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter } = createMockAdapter();
 
     createAgentRunner({
@@ -289,7 +289,7 @@ describe('telemetry lifecycle', () => {
     const shutdownError = new Error('OTel shutdown failed');
     telemetryMocks.shutdown.mockRejectedValueOnce(shutdownError);
 
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter } = createMockAdapter();
     const runner = createAgentRunner({
       adapter,
@@ -315,7 +315,7 @@ describe('telemetry lifecycle', () => {
   });
 
   it('always validates config even when shared infra exists', async () => {
-    const { createAgentRunner } = await import('./runner.js');
+    const { createAgentRunner } = await import('../runner.js');
     const { adapter } = createMockAdapter();
 
     createAgentRunner({

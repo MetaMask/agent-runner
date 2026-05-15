@@ -1,5 +1,22 @@
 import type { query } from '@anthropic-ai/claude-agent-sdk';
 
+import type {
+  JudgeConfig,
+  JudgeContext,
+  JudgeOptions,
+  JudgeResult,
+  ScoreEntry,
+} from './judge/types.js';
+
+export type {
+  JudgeConfig,
+  JudgeContext,
+  JudgeOptions,
+  JudgeResult,
+  JudgeScoreField,
+  ScoreEntry,
+} from './judge/types.js';
+
 /**
  * A tool invocation requested by the agent during a generation.
  */
@@ -312,6 +329,8 @@ export type AgentRunResult = {
   resultMessage?: AgentMessage | undefined;
   /** Agent session identifier from the init message. */
   sessionId?: string | undefined;
+  /** Langfuse trace identifier for score posting and linking. */
+  traceId?: string | undefined;
   /** Total API cost in US dollars. */
   totalCostUsd?: number | undefined;
   /** Wall-clock duration of the run in milliseconds. */
@@ -333,9 +352,24 @@ export type AgentRunResult = {
 
 /**
  * The main agent runner interface combining telemetry lifecycle
- * with agent execution.
+ * with agent execution, judging, and score posting.
  */
 export type AgentRunner = TelemetryLifecycle & {
   /** Executes a single agent run with the given options. */
   runAgent: (options: AgentRunOptions) => Promise<AgentRunResult>;
+  /**
+   * Runs an LLM-as-a-judge evaluation on a completed agent run.
+   * Scores are only posted to Langfuse when `options.postScores` is `true`.
+   */
+  judge: (
+    runResult: AgentRunResult,
+    judgeConfig: JudgeConfig,
+    context?: JudgeContext,
+    options?: JudgeOptions,
+  ) => Promise<JudgeResult>;
+  /** Posts scores to the telemetry backend for a completed agent run. */
+  postScores: (
+    runResult: AgentRunResult,
+    scores: ScoreEntry[],
+  ) => Promise<void>;
 };

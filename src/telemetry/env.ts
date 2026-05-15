@@ -1,5 +1,5 @@
-import { TelemetryConfigurationError } from './errors.js';
-import type { TelemetryConfig } from './types.js';
+import { TelemetryConfigurationError } from '../errors.js';
+import type { TelemetryConfig } from '../types.js';
 
 /**
  * Fully resolved Langfuse telemetry configuration with all required fields.

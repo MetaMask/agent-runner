@@ -7,18 +7,22 @@ const config = createConfig([
   {
     ignores: ['dist/', 'docs/', '.yarn/'],
   },
+
   {
     extends: base,
+
     languageOptions: {
       sourceType: 'module',
       parserOptions: {
         tsconfigRootDir: import.meta.dirname,
       },
     },
+
     settings: {
       'import-x/extensions': ['.js', '.mjs'],
     },
   },
+
   {
     rules: {
       // Handled by Oxfmt.
@@ -26,17 +30,21 @@ const config = createConfig([
       'import-x/order': 'off',
     },
   },
+
   {
     files: ['**/*.ts'],
     extends: typescript,
   },
+
   {
     files: ['**/*.js', '**/*.cjs'],
     extends: nodejs,
+
     languageOptions: {
       sourceType: 'script',
     },
   },
+
   {
     files: ['**/*.test.ts', '**/*.test.js'],
     extends: [vitest, nodejs],
