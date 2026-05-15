@@ -1,15 +1,17 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
-import { JudgeError } from './errors.js';
-import { redactSensitive } from './message-parser.js';
+import { JudgeError } from '../errors.js';
+import { redactSensitive } from '../message-parser.js';
 import type {
   AgentMessage,
   AgentRunResult,
+  RunnerMessageHandler,
+} from '../types.js';
+import type {
   JudgeConfig,
   JudgeContext,
   JudgeResult,
   JudgeScoreField,
-  RunnerMessageHandler,
 } from './types.js';
 
 /**

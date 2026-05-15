@@ -1,9 +1,16 @@
 import { createClaudeAdapter } from './adapters/claude-adapter.js';
 import { AgentRunnerError, MessageHandlerError } from './errors.js';
-import { executeJudge } from './judge.js';
-import { createMessageHandler } from './message-handler.js';
-import { postScores as postScoresToLangfuse } from './scoring.js';
-import { createTelemetryController } from './telemetry.js';
+import { executeJudge } from './judge/executor.js';
+import { postScores as postScoresToLangfuse } from './judge/scoring.js';
+import type {
+  JudgeConfig,
+  JudgeContext,
+  JudgeOptions,
+  JudgeResult,
+  ScoreEntry,
+} from './judge/types.js';
+import { createTelemetryController } from './telemetry/controller.js';
+import { createMessageHandler } from './telemetry/message-handler.js';
 import type {
   AgentMessage,
   AgentRunOptions,
@@ -11,13 +18,8 @@ import type {
   AgentRunner,
   AgentRunnerConfig,
   ClaudeQueryOptions,
-  JudgeConfig,
-  JudgeContext,
-  JudgeOptions,
-  JudgeResult,
   ProviderAdapter,
   RunConfig,
-  ScoreEntry,
 } from './types.js';
 
 /**

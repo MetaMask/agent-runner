@@ -2,10 +2,10 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
+import { TelemetryConfigurationError } from '../errors.js';
+import type { TelemetryConfig, TelemetryLifecycle } from '../types.js';
 import { resolveTelemetryConfig } from './env.js';
-import { TelemetryConfigurationError } from './errors.js';
 import { setLangfuseProcessor } from './tracing.js';
-import type { TelemetryConfig, TelemetryLifecycle } from './types.js';
 
 /**
  * Extended telemetry lifecycle with redaction support.

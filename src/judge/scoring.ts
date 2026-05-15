@@ -1,7 +1,8 @@
 import { LangfuseClient } from '@langfuse/client';
 
-import { resolveTelemetryConfig } from './env.js';
-import type { ScoreEntry, TelemetryConfig } from './types.js';
+import { resolveTelemetryConfig } from '../telemetry/env.js';
+import type { TelemetryConfig } from '../types.js';
+import type { ScoreEntry } from './types.js';
 
 /**
  * Posts scores to Langfuse via the official SDK client.

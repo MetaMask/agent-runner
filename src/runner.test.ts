@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MessageHandlerError, TelemetryConfigurationError } from './errors.js';
+import type { JudgeConfig, JudgeResult, ScoreEntry } from './judge/types.js';
 import { createAgentRunner } from './runner.js';
-import type {
-  AgentMessage,
-  AgentRunResult,
-  JudgeConfig,
-  JudgeResult,
-  ProviderAdapter,
-  ScoreEntry,
-} from './types.js';
+import type { AgentMessage, AgentRunResult, ProviderAdapter } from './types.js';
 
 const judgeMocks = vi.hoisted(() => ({
   executeJudge: vi.fn(),
@@ -19,11 +13,11 @@ const scoringMocks = vi.hoisted(() => ({
   postScores: vi.fn(),
 }));
 
-vi.mock('./judge.js', () => ({
+vi.mock('./judge/executor.js', () => ({
   executeJudge: judgeMocks.executeJudge,
 }));
 
-vi.mock('./scoring.js', () => ({
+vi.mock('./judge/scoring.js', () => ({
   postScores: scoringMocks.postScores,
 }));
 

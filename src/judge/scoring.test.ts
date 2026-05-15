@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { TelemetryConfig } from '../types.js';
 import { postScores } from './scoring.js';
-import type { ScoreEntry, TelemetryConfig } from './types.js';
+import type { ScoreEntry } from './types.js';
 
 const envMocks = vi.hoisted(() => ({
   resolveTelemetryConfig: vi.fn(),
 }));
 
-vi.mock('./env.js', () => ({
+vi.mock('../telemetry/env.js', () => ({
   resolveTelemetryConfig: envMocks.resolveTelemetryConfig,
 }));
 

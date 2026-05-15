@@ -1,4 +1,5 @@
-import { redactSensitive } from './message-parser.js';
+import { redactSensitive } from '../message-parser.js';
+import type { AgentMessage, ToolCall } from '../types.js';
 import {
   createSessionSpan,
   recordSpanError,
@@ -6,7 +7,6 @@ import {
   traceSpan,
 } from './tracing.js';
 import type { SpanHandle } from './tracing.js';
-import type { AgentMessage, ToolCall } from './types.js';
 
 /**
  * Configuration used by the tracing message handler.

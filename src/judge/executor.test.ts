@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { JudgeError } from './errors.js';
-import { executeJudge } from './judge.js';
-import type { AgentRunResult, JudgeConfig, JudgeContext } from './types.js';
+import { JudgeError } from '../errors.js';
+import type { AgentRunResult } from '../types.js';
+import { executeJudge } from './executor.js';
+import type { JudgeConfig, JudgeContext } from './types.js';
 
 const claudeMocks = vi.hoisted(() => ({
   query: vi.fn(),
