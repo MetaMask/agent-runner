@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Uncategorized
+
+- chore: add MetaMask Security Code Scanner workflow
+- docs: update architecture documentation and coverage thresholds
+- chore(deps): remove openinference instrumentation dependency
+- initial commit
+
+### Added
+
+- feat: add llm as judge abstraction ([#4](https://github.com/MetaMask/agent-runner/pull/4))
+- feat: add agent messages formatter util
+
 ## [0.1.0]
 
 ### Added
@@ -17,5 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `flush()` and `shutdown()` lifecycle methods
 - LiteLLM proxy support via environment variables
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
