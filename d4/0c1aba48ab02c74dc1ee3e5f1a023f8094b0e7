@@ -1,0 +1,24 @@
+CHANGELOG.md
+  s_d50eb0f9089569::t_46bf833e8bd02c 15-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "d40c1aba48ab02c74dc1ee3e5f1a023f8094b0e7",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_d50eb0f9089569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1bddd73b6ffeVO4fLERT7hr3ae",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
