@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0]
-
 ### Added
 
 - Initial release of `@metamask/agent-runner`
@@ -17,5 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `flush()` and `shutdown()` lifecycle methods
 - LiteLLM proxy support via environment variables
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
+[Unreleased]: https://github.com/MetaMask/agent-runner/
