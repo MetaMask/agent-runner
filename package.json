@@ -1,6 +1,6 @@
 {
   "name": "@metamask/agent-runner",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Reusable Claude Agent SDK runner with Langfuse telemetry lifecycle support.",
   "homepage": "https://github.com/MetaMask/agent-runner#readme",
   "bugs": {

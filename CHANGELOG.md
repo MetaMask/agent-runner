@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0]
-
 ### Added
 
 - Initial release of `@metamask/agent-runner`
@@ -20,5 +18,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiteLLM proxy support via `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY` environment variables
 - Dual CJS/ESM package output via `@ts-bridge/cli`
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
+[Unreleased]: https://github.com/MetaMask/agent-runner/
