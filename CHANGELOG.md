@@ -9,14 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0]
 
-### Uncategorized
-
-- 0.1.0 ([#6](https://github.com/MetaMask/agent-runner/pull/6))
-- chore: add MetaMask Security Code Scanner workflow
-- docs: update architecture documentation and coverage thresholds
-- chore(deps): remove openinference instrumentation dependency
-- initial commit
-
 ### Added
 
 - feat: add llm as judge abstraction ([#4](https://github.com/MetaMask/agent-runner/pull/4))
