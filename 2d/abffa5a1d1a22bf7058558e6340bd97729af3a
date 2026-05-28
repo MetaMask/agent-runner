@@ -1,0 +1,31 @@
+src/sandbox/docker/bridge.ts
+  s_cb38b264a29021::t_7fe9134b7879bd 697
+  s_cb38b264a29021::t_8c57f42ba8c957 311
+  s_cb38b264a29021::t_5101c60f961273 224-225
+  s_cb38b264a29021::t_ba9073a76c09b6 271
+src/sandbox/docker/bridge.test.ts
+  s_cb38b264a29021::t_5927ac45df2539 297-299,301,315
+vitest.config.mts
+  s_cb38b264a29021::t_e4c843848b7366 20,22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2dabffa5a1d1a22bf7058558e6340bd97729af3a",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_cb38b264a29021": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_18faf6f13fferut8hv5sFuzK4y",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
