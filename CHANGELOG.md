@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Docker sandbox runtime for the Claude adapter: agent runs can now
+  execute inside a Docker container with a configurable workspace
+  mount, additional bind mounts, env forwarding, network/user/`shm`
+  overrides, setup commands, and cleanup policy. A bundled
+  in-container bridge installs `@anthropic-ai/claude-agent-sdk` on the
+  fly and streams SDK messages back to the host runner. The bridge's
+  host-side command runner supports `AbortSignal` cancellation so
+  early consumer termination (`break`, `iterator.return()`, or an
+  `onMessage` handler error) tears the container down promptly.
+
 ## [0.1.0]
 
 ### Added

@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MessageHandlerError, TelemetryConfigurationError } from './errors.js';
+import {
+  MessageHandlerError,
+  SandboxConfigurationError,
+  TelemetryConfigurationError,
+} from './errors.js';
 import type { JudgeConfig, JudgeResult, ScoreEntry } from './judge/types.js';
 import { createAgentRunner } from './runner.js';
-import type { AgentMessage, AgentRunResult, ProviderAdapter } from './types.js';
+import type {
+  AgentMessage,
+  AgentRunOptions,
+  AgentRunResult,
+  DockerSandboxConfig,
+  ProviderAdapter,
+  RunConfig,
+} from './types.js';
 
 const judgeMocks = vi.hoisted(() => ({
   executeJudge: vi.fn(),
@@ -109,6 +120,26 @@ describe('createAgentRunner', () => {
       {
         prompt: 'test prompt',
         options: { maxTurns: 4, settingSources: ['user'] },
+      },
+    ]);
+  });
+
+  it('accepts streaming prompts and passes them through to the adapter', async () => {
+    const { adapter, runCalls } = createMockAdapter();
+    const runner = createAgentRunner({ adapter });
+    const prompt = (async function* (): AsyncGenerator {
+      yield {
+        type: 'user' as const,
+        message: { role: 'user' as const, content: 'hi' },
+      };
+    })() as AgentRunOptions['prompt'];
+
+    await runner.runAgent({ prompt });
+
+    expect(runCalls).toStrictEqual([
+      {
+        prompt,
+        options: { settingSources: [] },
       },
     ]);
   });
@@ -306,6 +337,158 @@ describe('createAgentRunner', () => {
     expect(result.totalCostUsd).toBeUndefined();
     expect(result.messages).toStrictEqual([nonResultMessage]);
     expect(result.metadata.messageCount).toBe(1);
+  });
+
+  describe('sandbox configuration', () => {
+    /**
+     * Builds a Docker sandbox config with the supplied overrides.
+     *
+     * @param overrides - Partial Docker sandbox config fields.
+     * @returns A complete Docker sandbox config.
+     */
+    const dockerSandbox = (
+      overrides: Partial<DockerSandboxConfig> = {},
+    ): DockerSandboxConfig => ({ type: 'docker', ...overrides });
+
+    /**
+     * Builds a sandbox-capable adapter that records the run config.
+     *
+     * @returns The mock sandbox-capable adapter and recorded calls.
+     */
+    const createSandboxAdapter = (): MockAdapter => {
+      const runCalls: unknown[] = [];
+      const adapter: ProviderAdapter = {
+        name: 'mock-sandbox',
+        capabilities: { sandboxes: ['docker'] },
+        /**
+         * Yields the standard happy-path message set.
+         *
+         * @param runConfig - The run config from the runner.
+         * @yields Agent messages from the standard happy-path set.
+         */
+        async *run(runConfig: RunConfig): AsyncGenerator<AgentMessage> {
+          runCalls.push(runConfig);
+          for (const message of [
+            initMessage,
+            generationMessage,
+            resultMessage,
+          ]) {
+            yield message;
+          }
+        },
+      };
+      return { adapter, runCalls };
+    };
+
+    it('passes the runner-level sandbox through to the adapter', async () => {
+      const { adapter, runCalls } = createSandboxAdapter();
+      const sandbox = dockerSandbox({ image: 'node:20' });
+      const runner = createAgentRunner({ adapter, sandbox });
+
+      await runner.runAgent({ prompt: 'sandboxed run' });
+
+      expect(runCalls).toHaveLength(1);
+      const runConfig = runCalls[0] as RunConfig;
+      expect(runConfig.sandbox).toStrictEqual({
+        type: 'docker',
+        image: 'node:20',
+      });
+    });
+
+    it('merges the run-level sandbox over the runner-level default', async () => {
+      const { adapter, runCalls } = createSandboxAdapter();
+      const runner = createAgentRunner({
+        adapter,
+        sandbox: dockerSandbox({ image: 'node:20' }),
+      });
+
+      await runner.runAgent({
+        prompt: 'sandboxed run',
+        sandbox: dockerSandbox({ image: 'node:22' }),
+      });
+
+      const runConfig = runCalls[0] as RunConfig;
+      expect(runConfig.sandbox).toStrictEqual({
+        type: 'docker',
+        image: 'node:22',
+      });
+    });
+
+    it('omits the sandbox when the run disables it with `false`', async () => {
+      const { adapter, runCalls } = createSandboxAdapter();
+      const runner = createAgentRunner({
+        adapter,
+        sandbox: dockerSandbox({ image: 'node:20' }),
+      });
+
+      await runner.runAgent({ prompt: 'sandboxed run', sandbox: false });
+
+      const runConfig = runCalls[0] as RunConfig;
+      expect('sandbox' in runConfig).toBe(false);
+    });
+
+    it('omits the sandbox property when no sandbox is configured', async () => {
+      const { adapter, runCalls } = createSandboxAdapter();
+      const runner = createAgentRunner({ adapter });
+
+      await runner.runAgent({ prompt: 'plain run' });
+
+      const runConfig = runCalls[0] as RunConfig;
+      expect('sandbox' in runConfig).toBe(false);
+    });
+
+    it('returns a partial result when the adapter does not support the sandbox type', async () => {
+      const adapter: ProviderAdapter = {
+        name: 'no-sandbox',
+        /**
+         * Mock run; should never be invoked because the runner guards
+         * against unsupported sandbox types before calling `run`.
+         *
+         * @param _config - The run config (unused).
+         */
+        // eslint-disable-next-line require-yield
+        async *run(_config): AsyncGenerator<AgentMessage> {
+          throw new Error('adapter.run must not be invoked');
+        },
+      };
+      const runner = createAgentRunner({
+        adapter,
+        sandbox: dockerSandbox(),
+      });
+
+      const result = await runner.runAgent({ prompt: 'should fail' });
+
+      expect(result.isPartial).toBe(true);
+      expect(result.error).toBeInstanceOf(SandboxConfigurationError);
+      expect(result.error?.message).toMatch(/no-sandbox/u);
+      expect(result.messages).toStrictEqual([]);
+    });
+
+    it('returns a partial result when the adapter declares no sandbox capabilities', async () => {
+      const adapter: ProviderAdapter = {
+        name: 'capability-less',
+        capabilities: {},
+        /**
+         * Mock run; should never be invoked because the runner guards
+         * against unsupported sandbox types before calling `run`.
+         *
+         * @param _config - The run config (unused).
+         */
+        // eslint-disable-next-line require-yield
+        async *run(_config): AsyncGenerator<AgentMessage> {
+          throw new Error('adapter.run must not be invoked');
+        },
+      };
+      const runner = createAgentRunner({
+        adapter,
+        sandbox: dockerSandbox(),
+      });
+
+      const result = await runner.runAgent({ prompt: 'should fail' });
+
+      expect(result.isPartial).toBe(true);
+      expect(result.error).toBeInstanceOf(SandboxConfigurationError);
+    });
   });
 
   it('wraps non-Error values thrown by adapter in AgentRunnerError', async () => {

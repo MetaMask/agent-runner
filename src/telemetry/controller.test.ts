@@ -166,6 +166,21 @@ describe('telemetry lifecycle', () => {
     );
   });
 
+  it('treats flush after shutdown as a no-op', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled', serviceName: 'metamask-evals' },
+    });
+
+    await runner.shutdown();
+    expect(await runner.flush()).toBeUndefined();
+
+    expect(telemetryMocks.shutdown).toHaveBeenCalledOnce();
+    expect(telemetryMocks.forceFlush).not.toHaveBeenCalled();
+  });
+
   it('passes run config through the injected adapter when telemetry is enabled', async () => {
     const { createAgentRunner } = await import('../runner.js');
     const { runCalls, adapter } = createMockAdapter();

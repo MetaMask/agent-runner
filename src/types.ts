@@ -7,6 +7,7 @@ import type {
   JudgeResult,
   ScoreEntry,
 } from './judge/types.js';
+import type { SandboxConfig } from './sandbox/types.js';
 
 export type {
   JudgeConfig,
@@ -16,6 +17,14 @@ export type {
   JudgeScoreField,
   ScoreEntry,
 } from './judge/types.js';
+export type {
+  DockerSandboxBridgeConfig,
+  DockerSandboxCleanupPolicy,
+  DockerSandboxConfig,
+  DockerSandboxMount,
+  DockerSandboxWorkspace,
+  SandboxConfig,
+} from './sandbox/types.js';
 
 /**
  * A tool invocation requested by the agent during a generation.
@@ -210,6 +219,35 @@ export type RunConfig = {
   prompt: ClaudeQueryInput['prompt'];
   /** Query options forwarded to the provider. */
   options: Partial<ClaudeQueryOptions>;
+  /**
+   * Resolved sandbox configuration for this run. Adapters that do not
+   * declare sandbox support via {@link ProviderAdapter.capabilities}
+   * should treat the field as unsupported and surface a configuration
+   * error to the caller.
+   *
+   * The runner currently only supports Docker sandboxes.
+   */
+  sandbox?: SandboxConfig;
+};
+
+/**
+ * Optional capability descriptor advertised by a provider adapter.
+ *
+ * The runner currently only supports Docker sandboxes. The
+ * `sandboxes` array is used for validation, not for registering custom
+ * sandbox runtimes. Adapters cannot introduce new sandbox types without
+ * changes to the runner core.
+ */
+export type ProviderAdapterCapabilities = {
+  /**
+   * Sandbox runtimes the adapter can execute. The runner uses this to
+   * guard against passing an unsupported sandbox to the adapter.
+   *
+   * Because the runner only supports Docker sandboxes today,
+   * this list is effectively limited to `['docker']`. It validates
+   * compatibility rather than enabling extensibility.
+   */
+  sandboxes?: readonly SandboxConfig['type'][];
 };
 
 /**
@@ -221,6 +259,12 @@ export type ProviderAdapter = {
   name: string;
   /** Executes an agent run and yields normalized messages. */
   run: (config: RunConfig) => AsyncIterable<AgentMessage>;
+  /**
+   * Optional capability descriptor advertised by the adapter. Used by the
+   * runner to validate that requested features (e.g. sandboxes) are
+   * supported before invoking {@link ProviderAdapter.run}.
+   */
+  capabilities?: ProviderAdapterCapabilities;
 };
 
 /**
@@ -285,6 +329,14 @@ export type AgentRunnerConfig = {
   telemetry?: TelemetryConfig;
   /** Provider adapter override; defaults to the Claude adapter. */
   adapter?: ProviderAdapter;
+  /**
+   * Default sandbox configuration applied to every run. Set to `false`
+   * to explicitly disable sandboxing at the runner level; individual runs
+   * may still opt in by supplying {@link AgentRunOptions.sandbox}.
+   *
+   * The runner currently only supports Docker sandboxes.
+   */
+  sandbox?: SandboxConfig | false;
 };
 
 /**
@@ -317,6 +369,14 @@ export type AgentRunOptions = {
   onMessage?: RunnerMessageHandler;
   /** Per-run Langfuse trace attributes. */
   telemetry?: AgentRunTelemetryAttributes;
+  /**
+   * Per-run sandbox configuration merged over the runner-level default.
+   * Pass `false` to disable sandboxing for this run even when the runner
+   * declares a default sandbox.
+   *
+   * The runner currently only supports Docker sandboxes.
+   */
+  sandbox?: SandboxConfig | false;
 };
 
 /**
