@@ -294,11 +294,11 @@ describe('bootstrapDockerClaudeBridge', () => {
       private: true,
     });
     expect(pkg.dependencies[BRIDGE_SDK_PACKAGE_NAME]).toBe('0.2.99');
-    // Zod version is resolved from the host; assert it is a valid semver
-    // string rather than a range (no ^ or ~ prefix).
-    expect(pkg.dependencies.zod).toMatch(/^\d+\.\d+\.\d+/u);
+    // Zod is not pinned explicitly — npm resolves it from the SDK's
+    // peer dependencies during install.
+    expect(pkg.dependencies.zod).toBeUndefined();
 
-    // npm install with --no-audit --no-fund --ignore-scripts and pinned dependencies.
+    // npm install with --no-audit --no-fund --ignore-scripts and pinned SDK version.
     const npmArgs = calls[5]?.args ?? [];
     expect(npmArgs.slice(0, 9)).toStrictEqual([
       'exec',
@@ -312,7 +312,7 @@ describe('bootstrapDockerClaudeBridge', () => {
       '--ignore-scripts',
     ]);
     expect(npmArgs[9]).toBe(`${BRIDGE_SDK_PACKAGE_NAME}@0.2.99`);
-    expect(npmArgs[10]).toMatch(/^zod@\d+\.\d+\.\d+/u);
+    expect(npmArgs).toHaveLength(10);
   });
 
   it('skips npm install when bridge.install === false', async () => {

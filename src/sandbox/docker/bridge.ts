@@ -52,14 +52,6 @@ export const MAX_BRIDGE_LINE_LENGTH = 10 * 1024 * 1024;
 export const MAX_BRIDGE_QUEUE_SIZE = 10_000;
 
 /**
- * Fallback exact version used when installing `zod` as the SDK's peer
- * dependency. The host-installed version is preferred (via
- * {@link readHostZodVersion}); this value is only used when the host
- * does not have zod installed.
- */
-export const DEFAULT_BRIDGE_ZOD_VERSION = '4.0.0';
-
-/**
  * NPM package name of the Claude Agent SDK that the bridge installs
  * inside the container.
  */
@@ -147,25 +139,6 @@ type PackageJsonHead = {
   version?: string;
 };
 
-/**
- * Reads the installed zod version from the host
- * `node_modules` tree. Uses `createRequire` so the resolution honours
- * the consumer's package layout (including `pnpm`, Yarn PnP, etc.).
- *
- * @returns The version string, or `undefined` when the package or its
- * `package.json` could not be resolved.
- */
-function readHostZodVersion(): string | undefined {
-  try {
-    const requireFn = createRequire(import.meta.url);
-    const pkgPath = requireFn.resolve('zod/package.json');
-    const contents = readFileSync(pkgPath, 'utf8');
-    const parsed = JSON.parse(contents) as PackageJsonHead;
-    return parsed.version ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * Reads the installed Claude Agent SDK version from the host
@@ -248,7 +221,8 @@ export type BootstrapDockerClaudeBridgeResult = {
  * 3. `docker cp` the compiled bridge script into the bridge directory.
  * 4. Write a minimal `package.json` describing the bridge runtime.
  * 5. Unless `config.bridge.install === false`, run `npm install` for
- *    `@anthropic-ai/claude-agent-sdk@<version>` and `zod@^4.0.0`.
+ *    `@anthropic-ai/claude-agent-sdk@<version>` (peer dependencies
+ *    such as `zod` are resolved automatically by npm).
  *
  * @param input - Inputs and overrides.
  * @returns The resolved remote bridge path and node command.
@@ -294,9 +268,7 @@ export async function bootstrapDockerClaudeBridge(
       : { readHostSdkVersion: input.readHostSdkVersion }),
   });
 
-  const zodVersion = readHostZodVersion() ?? DEFAULT_BRIDGE_ZOD_VERSION;
-
-  const pkgJson = buildBridgePackageJson(sdkVersion, zodVersion);
+  const pkgJson = buildBridgePackageJson(sdkVersion);
   try {
     await runner.run(
       'docker',
@@ -332,12 +304,11 @@ export async function bootstrapDockerClaudeBridge(
         '--no-fund',
         '--ignore-scripts',
         `${BRIDGE_SDK_PACKAGE_NAME}@${sdkVersion}`,
-        `zod@${zodVersion}`,
       ]);
     } catch (cause) {
       throw wrapDockerSandboxError(
         `Failed to install bridge runtime in container \`${sandbox.containerName}\` ` +
-          `(npm install ${BRIDGE_SDK_PACKAGE_NAME}@${sdkVersion} zod@${zodVersion})`,
+          `(npm install ${BRIDGE_SDK_PACKAGE_NAME}@${sdkVersion})`,
         cause,
       );
     }
@@ -721,13 +692,9 @@ async function preflightBinary(
  * directory inside the container.
  *
  * @param sdkVersion - SDK version that `npm install` will pin.
- * @param zodVersion - Zod version that `npm install` will pin.
  * @returns A JSON string ready to be piped over stdin.
  */
-function buildBridgePackageJson(
-  sdkVersion: string,
-  zodVersion: string,
-): string {
+function buildBridgePackageJson(sdkVersion: string): string {
   return `${JSON.stringify(
     {
       name: 'metamask-agent-runner-bridge',
@@ -736,7 +703,6 @@ function buildBridgePackageJson(
       type: 'module',
       dependencies: {
         [BRIDGE_SDK_PACKAGE_NAME]: sdkVersion,
-        zod: zodVersion,
       },
     },
     null,
