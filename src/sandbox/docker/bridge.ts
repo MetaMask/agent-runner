@@ -139,7 +139,6 @@ type PackageJsonHead = {
   version?: string;
 };
 
-
 /**
  * Reads the installed Claude Agent SDK version from the host
  * `node_modules` tree.

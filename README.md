@@ -471,11 +471,11 @@ Creates a runner with:
 
 #### `AgentRunnerConfig`
 
-| Field            | Type                          | Description                                        |
-| ---------------- | ----------------------------- | -------------------------------------------------- |
-| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.        |
-| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                       |
-| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter. |
+| Field            | Type                          | Description                                                        |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.                        |
+| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                                       |
+| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter.                 |
 | `sandbox`        | `SandboxConfig \| false`      | Default sandbox applied to every run. `false` disables explicitly. |
 
 ### `runAgent(options)`
