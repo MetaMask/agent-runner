@@ -1,0 +1,463 @@
+src/sandbox/docker/command-runner.test.ts
+  s_801410c592d935::t_ec839f8b5c0847 283-288,290-334
+  s_6127bcbc58177a::t_79f0ceac14f1ca 340,345-350
+  s_2e8f44b79ab872::t_7a3a0b4681902a 289
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 86,109
+  s_408d5a5b6f0b86::t_3fbd812638deb4 71-77,94-100
+  s_6127bcbc58177a::t_59b295005b6b47 40-49
+  s_408d5a5b6f0b86::t_998b201d1974ff 69-70,78-85,87-93,101-108,110-113,353-367
+  s_6127bcbc58177a::t_9e5724cab749a1 262-282,335-339,341-344,352
+src/sandbox/docker/cleanup-registry.test.ts
+  s_8b38cd1584c232::t_08b0a6abf0f4f0 147-188
+  s_5c5fa7ad736a8e::t_ed2bdbbb5f4220 321
+  s_f55896960bd1a8::t_8c0f4f6509d853 189-258
+  s_129d458b5970a2::t_729297412f9cd8 43,275-320,322-344
+src/sandbox/container/claude-bridge.test.ts
+  s_565f7a352a19aa::t_bba30eb08d3e47 454-487
+  s_0f0e86f2104672::t_33c6bc6d2e71b9 559-626
+src/sandbox/docker/bridge.test.ts
+  s_446ae5c3684c37::t_9303d1949c8c77 332-361
+  s_801410c592d935::t_3895aca7cdf462 16-17
+  s_79db001f332670::t_7cddb8cf697184 123-125
+  s_0e3f149bcff48d::t_6e1628b74620ce 301-315
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 755-757,800-802,807-809
+  s_2e8f44b79ab872::t_87707f99918572 796-797
+  s_67663ba1d9e90c::t_8bfbcf67d76c20 748-750,753,758,794-795,798,803-804
+  s_0e3f149bcff48d::t_fefd9fb6d9d29b 296-299
+  s_2e8f44b79ab872::t_a3fbe4b8a7ca4c 751-752
+  s_67663ba1d9e90c::t_541df466dfe473 747,754,759-792,799,805-806
+  s_67663ba1d9e90c::t_b757532f0b2b11 793
+  s_2e8f44b79ab872::t_d7ce845a50f516 1052
+  s_801410c592d935::t_8ca0b0dfd221f6 1036-1051,1053-1097
+src/runner.test.ts
+  s_8b38cd1584c232::t_29128c9ac8c4fd 128-129,136-146
+  s_8b38cd1584c232::t_63abf0583bc544 131-134
+  s_8b38cd1584c232::t_5145a20d11bde7 12,135
+  s_2e8f44b79ab872::t_48cdbe50f561b0 130
+  s_8b38cd1584c232::t_50693cd26d41fe 127
+src/sandbox/container/claude-bridge.ts
+  s_0f0e86f2104672::t_83a581ce92290e 138-163
+  s_0f0e86f2104672::t_771cb224776f54 283-291,299-302
+  s_0f0e86f2104672::t_204db334cfcb45 97-118
+  s_0f0e86f2104672::t_5391bb673abf9e 282,292
+src/sandbox/docker/options.ts
+  s_9db3fbbae8c9e3::t_5870b4e8b2611f 44-49,51,58-66,68-70,73-75,78-81,84-94,100-103
+  s_7101c679a3a783::t_cae6b7cd11af61 282
+  s_5c5fa7ad736a8e::t_376abf7833b466 606,608
+  s_ab3a32c118897d::t_59cd7ad54e98f0 190-194
+  s_0d13cfb0ff03c7::t_f765176a75f198 546-554
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 594-598
+  s_d07970bc200ccc::t_d3ae523cf07670 637-641
+  s_0d13cfb0ff03c7::t_edb95b2fec0d0f 531,535-539
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 555
+  s_0d13cfb0ff03c7::t_3b688f82b46c9d 369-402
+  s_0e3f149bcff48d::t_10e7697fb73433 308-310
+  s_9db3fbbae8c9e3::t_398fddc559d9dc 281,283-290
+  s_9db3fbbae8c9e3::t_12aaadb4bdee6f 580-584,587-589,599,607,609-613
+  s_5609fc4a3af85c::t_2741a89052871d 593
+  s_0e3f149bcff48d::t_07b16bc64f71b3 181-182
+  s_5609fc4a3af85c::t_b5d7a50d2e1e7e 50,57
+  s_0d13cfb0ff03c7::t_6ff397ed5a5353 339-346
+  s_ab3a32c118897d::t_74a42c17b0204f 311-313
+  s_7101c679a3a783::t_9aed731281b943 559-579,585-586,590-592,600-605,614-632
+  s_151559229f7e4d::t_b04565292ae12f 52
+  s_7101c679a3a783::t_5ead0a269a1b9a 53-56,67,71-72,76-77,82-83,95-99
+  s_5609fc4a3af85c::t_02c44e71ac210c 280,291
+  s_0d13cfb0ff03c7::t_a54b3c13b68182 514-530,532-534,540-542
+src/types.ts
+  s_e2282159ef996c::t_0008152c836ed2 376
+  s_e2282159ef996c::t_a47f71e8b295c8 227
+  s_e2282159ef996c::t_e4443bfb6576b9 235,237-245,247-248
+  s_5c5fa7ad736a8e::t_89de8af86e2436 228
+  s_5c5fa7ad736a8e::t_e1f4d2fc25d012 246
+  s_5c5fa7ad736a8e::t_6decc80aa3108d 236
+  s_e2282159ef996c::t_a90b9b46eb6a21 336
+  s_5c5fa7ad736a8e::t_18e954a300f6c8 377
+  s_5c5fa7ad736a8e::t_40e41f4233fdc9 337
+src/sandbox/config.ts
+  s_ab3a32c118897d::t_47005afdea3f32 154-156
+  s_0e3f149bcff48d::t_9171b3b8d22926 151-153
+  s_e2282159ef996c::t_a195571e092c54 14-16
+  s_0e3f149bcff48d::t_7d0c07a12f09fb 239-243
+  s_ab3a32c118897d::t_de925dc84957e7 244-248
+  s_5c5fa7ad736a8e::t_cae557e113b51a 13
+src/sandbox/docker/lifecycle.test.ts
+  s_ab3a32c118897d::t_da657e8395091c 148-149
+  s_5c5fa7ad736a8e::t_61be57067f7b83 479-480
+  s_3e156f907ca918::t_cc4964a6539c9c 520-591
+  s_0248d679a33ef8::t_b738884dfc07fa 19-22
+  s_408d5a5b6f0b86::t_c63e0a84240cf2 284-297
+  s_ab3a32c118897d::t_351c047df25c8c 32-41,43-47,50-52
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 42,510-513
+  s_0248d679a33ef8::t_2c42a2b1dff494 150-156
+  s_5c5fa7ad736a8e::t_756fe8afea0852 278-281
+  s_5c5fa7ad736a8e::t_cd5ce24f86a903 457-458
+  s_ab3a32c118897d::t_f0cb8c11c3b629 1026-1027
+  s_ab3a32c118897d::t_1ba32aec4860af 194-277,282-283,298-308
+  s_79db001f332670::t_acef70a232463c 394-430
+  s_0248d679a33ef8::t_56d89c381dfb34 433-456,459-478,481-509,514-519
+  s_0248d679a33ef8::t_1bd52746eed172 48-49
+  s_985a937e47a983::t_939ef2c4a7a7e5 836-909,911-942
+src/sandbox/types.ts
+  s_0e3f149bcff48d::t_af116670b6e65d 160-165
+  s_e2282159ef996c::t_2442391c20c602 223-224,226-227
+  s_5c5fa7ad736a8e::t_a964d80c822b89 225
+  s_2f7658439e9e93::t_df4fbad59d899f 203-213
+  s_ab3a32c118897d::t_36a2f2190451a9 192-202,214-215
+  s_9db3fbbae8c9e3::t_ebce4e52a95fe5 169-184
+src/sandbox/docker/bridge-protocol.test.ts
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 181-184
+  s_565f7a352a19aa::t_576232491e6c2e 90-180,185-186
+src/sandbox/docker/utils.ts
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 16-18
+  s_6ec8162194bbbc::t_da521f6a8d96e6 3,10-15,19-23,67
+  s_5609fc4a3af85c::t_babb03c3b77ed3 1-2,4-9,24-66
+README.md
+  s_8048133f657377::t_c4d0dd19837eba 575-577
+  s_f4a3de12beb62a::t_cfc3adec5e0b39 337-344,346-356
+  s_8048133f657377::t_77c6f7ac029f69 591-595
+  s_9db3fbbae8c9e3::t_a573b8f2b66cfe 372-407,412,424-435
+  s_f4a3de12beb62a::t_aa549acb79c4c1 332-336,345,357
+  s_8048133f657377::t_cf943df5f215dc 602
+  s_8048133f657377::t_d4fde4f818f5f1 491
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 408-411,413-423
+  s_8048133f657377::t_312109d190a783 479
+src/judge/executor.test.ts
+  s_8b38cd1584c232::t_9e0098c98b2ece 214-218,222-244
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 219-221
+src/adapters/claude-adapter.test.ts
+  s_79db001f332670::t_cad605a3d6f357 585-586
+  s_79db001f332670::t_17aa6c8bb22e8b 614
+  s_49e5ec70d93fe5::t_153d0eb5a3091d 917-938
+  s_49e5ec70d93fe5::t_d1f92ba772b3d2 941-965
+  s_79db001f332670::t_ca53679c237445 980
+  s_79db001f332670::t_9d95190bdcdcfd 828
+  s_79db001f332670::t_b21dd8b8efd354 852
+  s_79db001f332670::t_e9789a9d819ee7 870
+  s_79db001f332670::t_dae3ab14d9def8 914
+  s_565f7a352a19aa::t_8c96704d902075 873-891
+src/sandbox/docker/cleanup-registry.ts
+  s_5c5fa7ad736a8e::t_8996187341b45b 186,190-206
+  s_5c5fa7ad736a8e::t_9b8cc90494852f 180,183,185,187,189
+  s_5c5fa7ad736a8e::t_512bfa2bf27e70 181-182,184,188
+  s_f55896960bd1a8::t_9bba2539874035 125
+  s_f55896960bd1a8::t_c5b9fddc6604c2 165-178,207,211-212,221,225-228,231-232,236-239
+  s_5c5fa7ad736a8e::t_4be80fd4795654 222
+  s_f55896960bd1a8::t_49c3eb4296b88e 98-100
+  s_f55896960bd1a8::t_9e7347c8ad3ee7 26,42-43,47
+  s_129d458b5970a2::t_536f1fe028f022 25,28-36,44-46,48-86,127-164,208-210,213-220,229-230,233-235,240-241
+src/sandbox/docker/command-runner.ts
+  s_5c5fa7ad736a8e::t_dc291df07c4fc6 191-194,199-200,220-221
+  s_ab3a32c118897d::t_d3568eb9c98812 416-431,436-444
+  s_6127bcbc58177a::t_b2bb64d31aef68 94
+  s_801410c592d935::t_43fbae4e5a8188 175
+  s_801410c592d935::t_388cf39a4f2e40 234-236,248-262
+  s_801410c592d935::t_52e13e971883ba 57-66
+  s_5609fc4a3af85c::t_21d0908976f35c 6
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 432-435
+  s_6127bcbc58177a::t_b0ab6cf42839a3 211-219,222-226
+  s_6127bcbc58177a::t_e9adeaeb519be1 169-174,196-198,201-210,227-229,237-239,268-287
+src/telemetry/controller.test.ts
+  s_2e8f44b79ab872::t_8b2693a3a0fd76 178
+  s_8b38cd1584c232::t_5d19d722c9ee69 169-177,179-183
+src/sandbox/config.test.ts
+  s_8b38cd1584c232::t_4b128c925fe7e1 95-143
+src/sandbox/docker/lifecycle.ts
+  s_2e8f44b79ab872::t_637e54c208e6fd 283
+src/adapters/claude-adapter.ts
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 134-137
+src/formatter.test.ts
+  s_2e8f44b79ab872::t_5e6d5a2b78db04 142-144
+  s_e37d99e1a7ac17::t_8a6aee8ad0e680 438-443
+  s_e37d99e1a7ac17::t_c9f8bf1ba93368 70-75
+  s_e37d99e1a7ac17::t_6588d765f1089f 141,145-146
+  s_e37d99e1a7ac17::t_c5fd03f451c221 86-91
+vitest.config.mts
+  h_d6a04d82b61d5e 22-23
+  s_0f0e86f2104672::t_420b52f6c7add1 20
+  s_0f0e86f2104672::t_ec8923da899541 21
+src/sandbox/docker/options.test.ts
+  s_8b38cd1584c232::t_c5829043d5bf99 117-151
+  s_8b38cd1584c232::t_43838da58efe41 824-835
+  s_37743c58125c74::t_322c73f84ea23d 882-899
+  s_37743c58125c74::t_11e1bab6fccf65 943-964
+  s_8b38cd1584c232::t_0f7d375cb6d6c5 978-989
+  s_0d13cfb0ff03c7::t_70015fb26a3a81 294-331,344-430
+  s_7101c679a3a783::t_2dc8180fca92ee 2
+  s_37743c58125c74::t_2653e57ad8bea0 735-793
+  s_7101c679a3a783::t_e9f9937eb5a55b 479-481,485-497,501-513,517-529,533-538,540-542,557,561-573,577-589,593,595-602,606-615
+  s_8b38cd1584c232::t_b5a2e5ef02996b 687-723
+  s_8b38cd1584c232::t_3b8cb4a84fda71 332-343
+  s_5c5fa7ad736a8e::t_5a1c18fc225325 482-484,498-500,514-516,530-532,539,558-560,574-576,590-592,594,603-605
+  s_37743c58125c74::t_5340d83a1f9e01 823,836-856
+  s_8b38cd1584c232::t_bc62f0466dc11d 543-556
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65338fc97f913f6debb183589a476043b0155f6a",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_0248d679a33ef8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1946d0df3ffe4wnQ6iJMlLYko2",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_0d13cfb0ff03c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_191d4cd29ffeVHA88rhwSx3pLF",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_0e3f149bcff48d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_196d9c8ccffeJMPa6i7VWJuH0S",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_0f0e86f2104672": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_19126aa86ffek3KkgtobaKNmMi",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_129d458b5970a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_19484228affeuKYtqbAd6rVKOP",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_151559229f7e4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1949bdc30ffeW8klW0Kmv0mWUo",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_2e8f44b79ab872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_190d0f06cffe1nYIX7NCVPXwvH",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_2f7658439e9e93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_191d691e5ffeIS1zsAt20DnPo2",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_37743c58125c74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_19465ada7ffexKKiGs36Q09V46",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_3e156f907ca918": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1947402a4ffeTKYkQs8ow6ZLet",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_408d5a5b6f0b86": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_190ec646affejAIdn9tiXaAZHy",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_446ae5c3684c37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1946e6affffej69Fw3HPHqoBRO",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_49e5ec70d93fe5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_191d816e8ffes9iy0BTTKdghJz",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_5609fc4a3af85c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_19246eb20ffeJMgrn00ZmDD7ux",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_565f7a352a19aa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_190ece738ffeOuP6pCVpMFzAod",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_5c5fa7ad736a8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1929c83a3ffef1gxCYcADJDDNw",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_6127bcbc58177a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1947a550fffeg0tkqtxHZkMwCl",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_67663ba1d9e90c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_191d1ace2ffeuisHghw47mQB6L",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_6ec8162194bbbc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1945e3e1bffeyVEnkfEICvzVA0",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_7101c679a3a783": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_194688c69ffeYfYiZLVfYMXuzI",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_79db001f332670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1948dcfa6ffeJNsDQ9cX5VFfth",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_801410c592d935": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_191a4acb1ffeAolq4gJb0JPuy6",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_8048133f657377": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_190b32cf2ffe3IdoiNGlZDD4rC",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_8b38cd1584c232": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_190ebf880ffeJgXAa2bB8OwmJC",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_985a937e47a983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_1947e0265ffelDsiitVIv7I7H6",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_9db3fbbae8c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_19550decbffeFM3ypmzEU2uAnj",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_ab3a32c118897d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_196bbd7ffffemUmg7rahTw6B9Z",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_d07970bc200ccc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_191cb0304ffeUoHySh47qt2aG8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_e2282159ef996c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_194607172ffeNrG9hPl8eebV2t",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_e37d99e1a7ac17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_190f83631ffeg1Ce6WsGWLn3gL",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_f4a3de12beb62a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019e637d-79c8-77be-8612-062458aa629f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_f55896960bd1a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_194868b5cffeFkCDyINzCihZHB",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
