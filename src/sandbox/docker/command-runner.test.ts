@@ -357,7 +357,7 @@ describe('createDefaultDockerCommandRunner', () => {
       'node',
       [
         '-e',
-        'for(let i=0;i<700;i++){process.stderr.write("y".repeat(100))}process.exit(0);',
+        'for(let i=0;i<700;i++){process.stderr.write("y".repeat(100))}',
       ],
       { allowNonZeroExit: true },
     );
