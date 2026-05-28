@@ -1,0 +1,24 @@
+src/sandbox/docker/command-runner.test.ts
+  s_8e3193a7e892c8::t_d3e4d01bb1a530 360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa676f89f79dbb196e0e43f5cffbabb271b7f393",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_8e3193a7e892c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_18f8cdfe7ffeF2OqG9ARN1Mexr",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
