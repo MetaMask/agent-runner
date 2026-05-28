@@ -355,10 +355,7 @@ describe('createDefaultDockerCommandRunner', () => {
   it('fully discards leading chunks when they fit within the excess during truncation', async () => {
     const result = await runner.run(
       'node',
-      [
-        '-e',
-        'for(let i=0;i<700;i++){process.stderr.write("y".repeat(100))}',
-      ],
+      ['-e', 'for(let i=0;i<700;i++){process.stderr.write("y".repeat(100))}'],
       { allowNonZeroExit: true },
     );
 
