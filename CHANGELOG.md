@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]
+
 ### Added
 
+- feat: add sandbox support (docker) ([#11](https://github.com/MetaMask/agent-runner/pull/11))
+- feat: add license ([#10](https://github.com/MetaMask/agent-runner/pull/10))
 - Docker sandbox runtime for the Claude adapter: agent runs can now
   execute inside a Docker container with a configurable workspace
   mount, additional bind mounts, env forwarding, network/user/`shm`
@@ -38,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix: cleanup unused publish docs ([#8](https://github.com/MetaMask/agent-runner/pull/8))
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
