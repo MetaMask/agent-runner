@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { DockerSandboxConfig } from '../types.js';
 import { createClaudeAdapter } from './claude-adapter.js';
 
 const claudeMocks = vi.hoisted(() => ({
@@ -8,6 +9,25 @@ const claudeMocks = vi.hoisted(() => ({
 
 vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
   query: claudeMocks.query,
+}));
+
+const sandboxMocks = vi.hoisted(() => ({
+  createDefaultDockerCommandRunner: vi.fn(),
+  createDockerSandbox: vi.fn(),
+  runDockerClaudeBridge: vi.fn(),
+}));
+
+vi.mock('../sandbox/docker/command-runner.js', () => ({
+  createDefaultDockerCommandRunner:
+    sandboxMocks.createDefaultDockerCommandRunner,
+}));
+
+vi.mock('../sandbox/docker/lifecycle.js', () => ({
+  createDockerSandbox: sandboxMocks.createDockerSandbox,
+}));
+
+vi.mock('../sandbox/docker/bridge.js', () => ({
+  runDockerClaudeBridge: sandboxMocks.runDockerClaudeBridge,
 }));
 
 /** Generic Claude SDK message shape used by adapter tests. */
@@ -550,6 +570,451 @@ describe('createClaudeAdapter', () => {
           usage: { inputTokens: 10, outputTokens: 5 },
           stopReason: 'end_turn',
           raw,
+        },
+      ]);
+    });
+  });
+
+  describe('sandbox path', () => {
+    /** Fake handle returned by the mocked Docker lifecycle. */
+    type FakeHandle = {
+      /** Stub container name exposed to the adapter. */
+      containerName: string;
+      /** Spyable close hook the adapter calls during cleanup. */
+      close: ReturnType<typeof vi.fn>;
+      /** Spyable unregister hook the adapter calls when preserving. */
+      unregisterCleanup: ReturnType<typeof vi.fn>;
+    };
+
+    /**
+     * Drains an async iterable into a list of values.
+     *
+     * @param iterable - The async iterable to drain.
+     * @returns The collected values in order.
+     */
+    const drain = async <Value>(
+      iterable: AsyncIterable<Value>,
+    ): Promise<Value[]> => {
+      const collected: Value[] = [];
+      for await (const value of iterable) {
+        collected.push(value);
+      }
+      return collected;
+    };
+
+    /**
+     * Builds a fake sandbox handle exposing only the fields the adapter
+     * touches in the sandbox path.
+     *
+     * @returns A handle with a spyable `close` method.
+     */
+    const makeHandle = (): FakeHandle => ({
+      containerName: 'sandbox-test',
+      close: vi.fn().mockResolvedValue(undefined),
+      unregisterCleanup: vi.fn(),
+    });
+
+    /**
+     * Builds a bridge mock that yields the supplied SDK messages as an
+     * async iterable.
+     *
+     * @param messages - Raw SDK messages to yield.
+     * @returns An async-iterable bridge result.
+     */
+    const makeBridge = (messages: SdkMessage[]): AsyncIterable<unknown> => ({
+      /**
+       * Yields raw SDK messages.
+       *
+       * @yields Raw SDK messages.
+       */
+      async *[Symbol.asyncIterator](): AsyncGenerator<unknown> {
+        for (const message of messages) {
+          yield message;
+        }
+      },
+    });
+
+    /**
+     * Builds a bridge mock that throws after optionally yielding the
+     * supplied messages.
+     *
+     * @param error - Error to throw.
+     * @param messages - Optional messages to yield before throwing.
+     * @returns An async-iterable bridge result.
+     */
+    const makeFailingBridge = (
+      error: Error,
+      messages: SdkMessage[] = [],
+    ): AsyncIterable<unknown> => ({
+      /**
+       * Yields messages then throws.
+       *
+       * @yields Raw SDK messages until the error is thrown.
+       */
+      async *[Symbol.asyncIterator](): AsyncGenerator<unknown> {
+        for (const message of messages) {
+          yield message;
+        }
+        throw error;
+      },
+    });
+
+    /** Shared Docker sandbox config used by the sandbox-path tests. */
+    const baseSandbox: DockerSandboxConfig = {
+      type: 'docker',
+      workspace: { hostPath: '/tmp/workspace' },
+    };
+
+    /** Captured runner returned by the mocked factory. */
+    const fakeRunner = { run: vi.fn() };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      fakeRunner.run.mockReset();
+      sandboxMocks.createDefaultDockerCommandRunner.mockReturnValue(fakeRunner);
+    });
+
+    it('declares Docker sandbox support via capabilities', () => {
+      const adapter = createClaudeAdapter();
+      expect(adapter.capabilities).toStrictEqual({ sandboxes: ['docker'] });
+    });
+
+    it('runs in-process and bypasses the sandbox machinery when no sandbox is set', async () => {
+      claudeMocks.query.mockReturnValueOnce(yieldMessages([]));
+
+      const adapter = createClaudeAdapter();
+      const translated: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'plain run',
+        options: { maxTurns: 1 },
+      })) {
+        translated.push(message);
+      }
+
+      expect(translated).toStrictEqual([]);
+      expect(claudeMocks.query).toHaveBeenCalledWith({
+        prompt: 'plain run',
+        options: { maxTurns: 1 },
+      });
+      expect(sandboxMocks.createDockerSandbox).not.toHaveBeenCalled();
+      expect(sandboxMocks.runDockerClaudeBridge).not.toHaveBeenCalled();
+    });
+
+    it('normalizes, creates the sandbox, runs the bridge, and closes on success', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const bridgeMessage = {
+        type: 'system',
+        subtype: 'init',
+        session_id: 's1',
+      };
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([bridgeMessage]),
+      );
+
+      const adapter = createClaudeAdapter();
+      const translated: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'sandboxed',
+        options: {},
+        sandbox: baseSandbox,
+      })) {
+        translated.push(message);
+      }
+
+      expect(translated).toStrictEqual([
+        { type: 'init', sessionId: 's1', raw: bridgeMessage },
+      ]);
+
+      expect(
+        sandboxMocks.createDefaultDockerCommandRunner,
+      ).toHaveBeenCalledTimes(1);
+
+      expect(sandboxMocks.createDockerSandbox).toHaveBeenCalledTimes(1);
+      const [normalized, lifecycleOptions] = sandboxMocks.createDockerSandbox
+        .mock.calls[0] as [Record<string, unknown>, Record<string, unknown>];
+      expect(normalized.workspace).toStrictEqual({
+        hostPath: '/tmp/workspace',
+        containerPath: '/workspace',
+        readOnly: false,
+      });
+      expect(normalized.cleanup).toBe('always');
+      expect(lifecycleOptions.commandRunner).toBe(fakeRunner);
+
+      expect(sandboxMocks.runDockerClaudeBridge).toHaveBeenCalledTimes(1);
+      const bridgeInput = sandboxMocks.runDockerClaudeBridge.mock
+        .calls[0]?.[0] as Record<string, unknown>;
+      expect(bridgeInput.sandbox).toBe(handle);
+      expect(bridgeInput.commandRunner).toBe(fakeRunner);
+      expect(bridgeInput.request).toStrictEqual({
+        prompt: 'sandboxed',
+        options: {},
+      });
+
+      expect(handle.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses options.cwd as the host cwd when it is a string', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+
+      const adapter = createClaudeAdapter();
+      await drain(
+        adapter.run({
+          prompt: 'sandboxed',
+          options: { cwd: '/tmp/workspace/sub' },
+          sandbox: baseSandbox,
+        }),
+      );
+
+      const bridgeInput = sandboxMocks.runDockerClaudeBridge.mock
+        .calls[0]?.[0] as Record<string, unknown>;
+      // `options.cwd` lives inside the workspace and is rewritten to its
+      // container equivalent by `prepareDockerSandboxRequest`.
+      expect(
+        (bridgeInput.request as Record<string, unknown>).options,
+      ).toStrictEqual({ cwd: '/workspace/sub' });
+    });
+
+    it('does not mutate caller options or sandbox config', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+
+      const sandbox: DockerSandboxConfig = {
+        type: 'docker',
+        workspace: { hostPath: '/tmp/workspace' },
+        env: { FOO: 'bar' },
+      };
+      const sandboxSnapshot = structuredClone(sandbox);
+      const options = { maxTurns: 3, cwd: '/tmp/workspace' };
+      const optionsSnapshot = structuredClone(options);
+
+      const adapter = createClaudeAdapter();
+      await drain(
+        adapter.run({
+          prompt: 'sandboxed',
+          options,
+          sandbox,
+        }),
+      );
+
+      expect(sandbox).toStrictEqual(sandboxSnapshot);
+      expect(options).toStrictEqual(optionsSnapshot);
+    });
+
+    it('closes the container on bridge error when cleanup is `always`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const cause = new Error('bridge boom');
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeFailingBridge(cause),
+      );
+
+      const adapter = createClaudeAdapter();
+
+      await expect(
+        drain(
+          adapter.run({
+            prompt: 'sandboxed',
+            options: {},
+            sandbox: { ...baseSandbox, cleanup: 'always' },
+          }),
+        ),
+      ).rejects.toBe(cause);
+
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('does not close the container on bridge error when cleanup is `on-success`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const cause = new Error('bridge boom');
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeFailingBridge(cause),
+      );
+
+      const adapter = createClaudeAdapter();
+
+      await expect(
+        drain(
+          adapter.run({
+            prompt: 'sandboxed',
+            options: {},
+            sandbox: { ...baseSandbox, cleanup: 'on-success' },
+          }),
+        ),
+      ).rejects.toBe(cause);
+
+      expect(handle.close).not.toHaveBeenCalled();
+      expect(handle.unregisterCleanup).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes the container on bridge success when cleanup is `on-success`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+
+      const adapter = createClaudeAdapter();
+      await drain(
+        adapter.run({
+          prompt: 'sandboxed',
+          options: {},
+          sandbox: { ...baseSandbox, cleanup: 'on-success' },
+        }),
+      );
+
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('re-throws close errors when the bridge run succeeds but cleanup fails', async () => {
+      const handle = makeHandle();
+      handle.close.mockRejectedValueOnce(new Error('close boom'));
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+
+      const adapter = createClaudeAdapter();
+
+      await expect(
+        drain(
+          adapter.run({
+            prompt: 'sandboxed',
+            options: {},
+            sandbox: { ...baseSandbox, cleanup: 'always' },
+          }),
+        ),
+      ).rejects.toThrow('close boom');
+    });
+
+    it('closes the container when the consumer breaks early under cleanup `always`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const first = { type: 'system', subtype: 'init', session_id: 's1' };
+      const second = { type: 'system', subtype: 'status', status: 'working' };
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([first, second]),
+      );
+
+      const adapter = createClaudeAdapter();
+      const collected: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'sandboxed',
+        options: {},
+        sandbox: { ...baseSandbox, cleanup: 'always' },
+      })) {
+        collected.push(message);
+        break;
+      }
+
+      expect(collected).toHaveLength(1);
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('closes the container on early break even when cleanup is `on-success`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const first = { type: 'system', subtype: 'init', session_id: 's1' };
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([first, { type: 'system', subtype: 'status' }]),
+      );
+
+      const adapter = createClaudeAdapter();
+      const collected: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'sandboxed',
+        options: {},
+        sandbox: { ...baseSandbox, cleanup: 'on-success' },
+      })) {
+        collected.push(message);
+        break;
+      }
+
+      expect(collected).toHaveLength(1);
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('closes the container on early break even when cleanup is `never`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const first = { type: 'system', subtype: 'init', session_id: 's1' };
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([first, { type: 'system', subtype: 'status' }]),
+      );
+
+      const adapter = createClaudeAdapter();
+      const collected: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'sandboxed',
+        options: {},
+        sandbox: { ...baseSandbox, cleanup: 'never' },
+      })) {
+        collected.push(message);
+        break;
+      }
+
+      expect(collected).toHaveLength(1);
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('does not close the container when cleanup is `never` and the bridge runs to completion', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+
+      const adapter = createClaudeAdapter();
+      await drain(
+        adapter.run({
+          prompt: 'sandboxed',
+          options: {},
+          sandbox: { ...baseSandbox, cleanup: 'never' },
+        }),
+      );
+
+      expect(handle.close).not.toHaveBeenCalled();
+      expect(handle.unregisterCleanup).toHaveBeenCalledTimes(1);
+    });
+
+    it('translates streamed bridge messages through the SDK translator', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      const assistant = {
+        type: 'assistant',
+        message: {
+          model: 'claude-sonnet',
+          content: [{ type: 'text', text: 'hi' }],
+          usage: { input_tokens: 1, output_tokens: 1 },
+          stop_reason: 'end_turn',
+        },
+      };
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([assistant]),
+      );
+
+      const adapter = createClaudeAdapter();
+      const translated: unknown[] = [];
+      for await (const message of adapter.run({
+        prompt: 'sandboxed',
+        options: {},
+        sandbox: baseSandbox,
+      })) {
+        translated.push(message);
+      }
+
+      expect(translated).toStrictEqual([
+        {
+          type: 'generation',
+          model: 'claude-sonnet',
+          text: 'hi',
+          toolCalls: [],
+          usage: { inputTokens: 1, outputTokens: 1 },
+          stopReason: 'end_turn',
+          raw: assistant,
         },
       ]);
     });

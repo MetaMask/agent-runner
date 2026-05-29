@@ -137,6 +137,18 @@ src/
     executor.ts         LLM-as-a-judge evaluation runner
     scoring.ts          Langfuse score posting
     types.ts            Judge type definitions
+  sandbox/
+    types.ts            Public sandbox config types and defaults
+    config.ts           Runner/run sandbox config merge logic
+    docker/
+      options.ts        Normalize DockerSandboxConfig into argv inputs
+      command-runner.ts Default host process runner (spawn + spawnSync)
+      lifecycle.ts      docker run/exec/cp/rm orchestration
+      cleanup-registry.ts Process-wide container cleanup on exit/signal
+      bridge.ts         Host side of the host↔container bridge
+      bridge-protocol.ts JSON frame schema and parser for the bridge
+    container/
+      claude-bridge.ts  In-container Node.js bridge that drives the SDK
 ```
 
 ### Provider adapter pattern
@@ -227,14 +239,222 @@ Key design points:
 
 ### Error handling
 
-Four error classes form a hierarchy rooted at `AgentRunnerError`:
+The error classes form a hierarchy rooted at `AgentRunnerError`:
 
 - **`AgentRunnerError`** — base class for all runner failures.
 - **`TelemetryConfigurationError`** — missing or invalid Langfuse/OTel config.
 - **`MessageHandlerError`** — wraps errors thrown by the `onMessage` callback. When `onMessage` throws, the run terminates early and the error is captured in `result.error`.
 - **`JudgeError`** — thrown when an LLM-as-a-judge evaluation fails (invalid config, parse failure, non-success termination, or `onMessage` callback error).
+- **`SandboxConfigurationError`** — invalid sandbox config (unknown `type`, missing required field).
+- **`DockerSandboxError`** — Docker runtime failure (image pull, container start, exec, copy, or cleanup).
+- **`DockerSandboxProtocolError`** — invalid frame received over the in-container bridge protocol. Subclass of `DockerSandboxError`.
 
 The run loop catches all errors and returns them in the result rather than throwing, so callers always get a partial result with `isPartial: true` and `error` populated.
+
+## Docker sandbox
+
+The Claude adapter can execute agent runs inside a Docker container instead of
+the host process. This isolates filesystem writes, environment variables, and
+spawned subprocesses (including the Claude Agent SDK's own tools) from the
+host. The sandbox is opt-in: when no `sandbox` is configured the adapter runs
+the SDK in-process exactly as before.
+
+The runner attaches a default sandbox via `createAgentRunner({ sandbox })`,
+and individual calls can override it with `runAgent({ sandbox })`. Pass
+`sandbox: false` at either level to disable sandboxing.
+
+```ts
+import { createAgentRunner } from '@metamask/agent-runner';
+
+const runner = createAgentRunner({
+  sandbox: {
+    type: 'docker',
+    image: 'node:22-bookworm',
+    workspace: {
+      hostPath: process.cwd(),
+      containerPath: '/workspace',
+    },
+    workdir: '/workspace',
+    forwardEnv: ['ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL'],
+    cleanup: 'always',
+  },
+});
+
+const result = await runner.runAgent({
+  prompt: 'Run the test suite and summarize failures.',
+});
+```
+
+### How it works
+
+1. The adapter normalizes the `DockerSandboxConfig` (filling in defaults
+   such as the workspace mount, forwarded env vars, and the cleanup
+   policy).
+2. A container is started with `docker run -d` using the resolved
+   workspace mount, extra bind mounts, env vars, network mode, user
+   override, and `--shm-size`. Any `setupCommands` run inside the
+   container via `docker exec` after it starts.
+3. A small Node.js bridge (`src/sandbox/container/claude-bridge.mjs`) is
+   copied into the container and the configured `@anthropic-ai/claude-agent-sdk`
+   version is `npm install`ed alongside it. The host streams a JSON
+   request to the bridge over stdin and reads newline-delimited JSON
+   events back over stdout.
+4. The adapter translates those events into the same `AgentMessage`
+   union the in-process Claude adapter emits, so consumers do not need
+   to special-case sandboxed runs.
+5. When the run completes the container is removed according to the
+   `cleanup` policy. A process-level cleanup registry also tears down
+   any containers still tracked when the host process exits or receives
+   a termination signal.
+
+### `DockerSandboxConfig`
+
+| Field              | Type                                  | Description                                                                                                                                              |
+| ------------------ | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`             | `'docker'`                            | Discriminant identifying the sandbox runtime.                                                                                                            |
+| `image`            | `string`                              | Container image. Defaults to `DEFAULT_DOCKER_SANDBOX_IMAGE`.                                                                                             |
+| `workspace`        | `DockerSandboxWorkspace \| false`     | Workspace bind mount, or `false` to disable. Defaults to a writable mount of `process.cwd()` at `DEFAULT_DOCKER_SANDBOX_WORKSPACE_PATH` (`/workspace`).  |
+| `workdir`          | `string`                              | Working directory inside the container for the agent process.                                                                                            |
+| `mounts`           | `DockerSandboxMount[]`                | Additional bind mounts (`hostPath`, `containerPath`, `readOnly?`).                                                                                       |
+| `env`              | `Record<string, string \| undefined>` | Env vars set inside the container. `undefined` deletes a key inherited from the runner-level default.                                                    |
+| `forwardEnv`       | `readonly string[] \| false`          | Host env vars copied into the container. Defaults to `DEFAULT_DOCKER_SANDBOX_FORWARD_ENV` (`ANTHROPIC_*`, `CLAUDE_CODE_OAUTH_TOKEN`, `*_PROXY`).         |
+| `network`          | `string`                              | Container `--network` mode (e.g. `host`, `none`, `bridge`).                                                                                              |
+| `user`             | `string \| 'current' \| false`        | Container user. `'current'` resolves to the host UID/GID so files written to mounts retain host ownership; `false` runs as the image default.            |
+| `shmSize`          | `string`                              | Size of `/dev/shm` (e.g. `512m`, `2g`).                                                                                                                  |
+| `unsafeDockerArgs` | `string[]`                            | Extra raw arguments forwarded to `docker run`. Not validated.                                                                                            |
+| `setupCommands`    | `string[]`                            | Shell commands executed inside the container before the agent starts. Useful for installing extra dependencies or seeding state.                         |
+| `cleanup`          | `'always' \| 'on-success' \| 'never'` | When to remove the container. Defaults to `'always'`. `'on-success'` keeps the container on failure for inspection.                                      |
+| `bridge`           | `DockerSandboxBridgeConfig`           | Bridge runtime options: `install`, `nodeCommand`, `npmCommand`, `sdkVersion`. Defaults install the host's installed Claude Agent SDK version on the fly. |
+
+`SandboxConfig` is a discriminated union on `type`; today only `'docker'`
+is supported but the surface is reserved for future runtimes.
+
+### Docker defaults
+
+When callers provide only `sandbox: { type: 'docker' }`, the runner uses
+these defaults:
+
+| Setting                  | Default                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Image                    | `docker/sandbox-templates:shell` (`DEFAULT_DOCKER_SANDBOX_IMAGE`)                                                                     |
+| Workspace host path      | `options.cwd` when it is a string, otherwise `process.cwd()`                                                                          |
+| Workspace container path | `/workspace` (`DEFAULT_DOCKER_SANDBOX_WORKSPACE_PATH`)                                                                                |
+| Workspace access         | Writable bind mount (`readOnly: false`)                                                                                               |
+| Workdir                  | Workspace container path (`/workspace`) when the workspace mount is enabled; otherwise unset unless `workdir` is provided             |
+| Extra mounts             | None (`[]`)                                                                                                                           |
+| Forwarded env vars       | `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` |
+| Explicit env             | None (`{}`), then merged over forwarded env vars                                                                                      |
+| Network                  | Docker runtime default (no `--network` flag)                                                                                          |
+| User                     | Image default (no `--user` flag). Set `user: 'current'` to run as the host UID/GID.                                                   |
+| Shared memory            | Docker runtime default (no `--shm-size` flag)                                                                                         |
+| Unsafe Docker args       | None (`[]`)                                                                                                                           |
+| Setup commands           | None (`[]`)                                                                                                                           |
+| Cleanup policy           | `always`                                                                                                                              |
+| Bridge install           | `true`; installs `@anthropic-ai/claude-agent-sdk` plus `zod` inside the container before the run                                      |
+| Bridge commands          | `node` and `npm`                                                                                                                      |
+| Bridge SDK version       | Host-installed `@anthropic-ai/claude-agent-sdk` version unless `bridge.sdkVersion` is set                                             |
+| Bridge directory         | `/tmp/metamask-agent-runner-bridge`                                                                                                   |
+
+### Per-run override
+
+`runAgent({ sandbox })` merges with the runner-level default:
+
+- Scalar fields on the per-run config replace the runner-level value.
+- `env` merges per key (`undefined` deletes a key).
+- Array-valued fields (`mounts`, `unsafeDockerArgs`, `setupCommands`)
+  follow replace-on-provide semantics.
+- `workspace` is `false` only when the per-run value is `false`; otherwise
+  the two objects are shallow merged.
+- `bridge` is shallow merged.
+- Passing `sandbox: false` at the run level disables sandboxing for that
+  run even when the runner declares a default.
+
+### Security considerations
+
+The Docker sandbox provides **convenience isolation**, not adversarial
+sandboxing. It is designed to prevent accidental side effects — runaway
+shell commands, unintended file writes, and environment bleed — rather
+than to contain a deliberately malicious agent.
+
+**What the sandbox does:**
+
+- Runs agent tools (Bash, file I/O, subprocesses) inside a container so
+  they cannot directly access host paths outside the mounted workspace.
+- Limits environment variable exposure to the explicit `forwardEnv`
+  list instead of inheriting the full host environment.
+- Automatically removes the container on completion (or process exit)
+  so orphaned containers do not accumulate.
+
+**What the sandbox does NOT do:**
+
+- **Harden against a compromised model.** The default container runs as
+  the image's default user (often `root`), retains Docker's default
+  Linux capabilities, and has full network access. A malicious agent
+  can read forwarded credentials from the environment, reach external
+  endpoints over the network, and mutate the writable workspace mount.
+- **Enforce resource limits.** No `--memory`, `--cpus`, or
+  `--pids-limit` flags are applied by default. A runaway process can
+  consume unbounded host resources.
+- **Restrict the workspace mount.** The workspace is writable by default
+  so the agent can modify project files. Set `workspace.readOnly: true`
+  when the agent should only read the codebase.
+
+**Hardening recommendations for sensitive environments:**
+
+```ts
+createAgentRunner({
+  sandbox: {
+    type: 'docker',
+    user: 'current', // avoid root; match host UID/GID
+    network: 'none', // block all network access
+    workspace: { readOnly: true }, // prevent host file mutation
+    forwardEnv: ['ANTHROPIC_API_KEY'], // narrow to only required secrets
+    unsafeDockerArgs: [
+      '--cap-drop',
+      'ALL', // drop all Linux capabilities
+      '--security-opt',
+      'no-new-privileges',
+      '--pids-limit',
+      '256',
+      '--memory',
+      '4g',
+      '--read-only', // immutable rootfs
+      '--tmpfs',
+      '/tmp:rw,noexec,nosuid', // writable scratch space
+    ],
+  },
+});
+```
+
+> **`unsafeDockerArgs` warning:** Entries in this array bypass all
+> sandbox safety checks. Flags such as `--privileged`,
+> `--cap-add SYS_ADMIN`, or `-v /var/run/docker.sock` can completely
+> defeat container isolation. The normalizer emits a `console.warn`
+> when it detects known-dangerous flags; treat any such warning as a
+> review-required signal.
+
+### Requirements and caveats
+
+- The `docker` CLI must be on `PATH` and the user must be able to create
+  containers. Rootless Docker, Podman with a `docker` shim, and remote
+  daemons via `DOCKER_HOST` all work as long as the CLI obeys.
+- The container image must include a Node.js runtime compatible with the
+  Claude Agent SDK (Node 20+). The bridge installs the SDK via `npm`, so
+  `npm` must also be available (override with `bridge.nodeCommand` /
+  `bridge.npmCommand` if you ship a custom binary).
+- The bridge runs `npm install` on every fresh container by default. For
+  faster startup, bake the SDK into a custom image and set
+  `bridge.install: false`.
+- The first run after a fresh container may pull the image; subsequent
+  runs reuse the local layer cache.
+- Streaming-input prompts (`AsyncIterable`) are not supported when running
+  inside a Docker sandbox; pass a string `prompt`.
+- All sandbox runtime errors surface as `DockerSandboxError` (or the
+  `DockerSandboxProtocolError` subclass) wrapped in the standard
+  `AgentRunResult.error` field; runs are not retried automatically.
+- The real Docker integration smoke test is skipped by default. To run it
+  against a working Docker daemon, use:
+  `RUN_DOCKER_TESTS=1 yarn vitest run src/sandbox/docker/integration.test.ts`.
 
 ## API
 
@@ -251,11 +471,12 @@ Creates a runner with:
 
 #### `AgentRunnerConfig`
 
-| Field            | Type                          | Description                                        |
-| ---------------- | ----------------------------- | -------------------------------------------------- |
-| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.        |
-| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                       |
-| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter. |
+| Field            | Type                          | Description                                                        |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.                        |
+| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                                       |
+| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter.                 |
+| `sandbox`        | `SandboxConfig \| false`      | Default sandbox applied to every run. `false` disables explicitly. |
 
 ### `runAgent(options)`
 
@@ -267,6 +488,7 @@ Creates a runner with:
 | `options`   | `Partial<ClaudeQueryOptions>` | Per-run query options merged over runner defaults.                                         |
 | `onMessage` | `RunnerMessageHandler`        | Callback invoked for each streamed message.                                                |
 | `telemetry` | `AgentRunTelemetryAttributes` | Per-run Langfuse trace attributes (traceName, userId, sessionId, tags, version, metadata). |
+| `sandbox`   | `SandboxConfig \| false`      | Per-run sandbox config merged over runner default. `false` disables for this run.          |
 
 #### `AgentRunResult`
 
@@ -350,6 +572,9 @@ import {
   TelemetryConfigurationError,
   MessageHandlerError,
   JudgeError,
+  SandboxConfigurationError,
+  DockerSandboxError,
+  DockerSandboxProtocolError,
 } from '@metamask/agent-runner';
 ```
 
@@ -363,12 +588,18 @@ import type {
   AgentRunTelemetryAttributes,
   AgentRunner,
   AgentRunnerConfig,
+  DockerSandboxBridgeConfig,
+  DockerSandboxCleanupPolicy,
+  DockerSandboxConfig,
+  DockerSandboxMount,
+  DockerSandboxWorkspace,
   JudgeConfig,
   JudgeContext,
   JudgeOptions,
   JudgeResult,
   JudgeScoreField,
   RunnerMessageHandler,
+  SandboxConfig,
   ScoreEntry,
   TelemetryConfig,
   TelemetryLifecycle,

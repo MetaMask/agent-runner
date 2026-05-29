@@ -67,6 +67,12 @@ describe('formatMessage', () => {
       expect(result).toBe('[retry] attempt 2/5 (1000ms delay)');
     });
 
+    it('formats api_retry with defaults when fields are missing', () => {
+      expect(formatMessage({ type: 'system', subtype: 'api_retry' })).toBe(
+        '[retry] attempt 0/0 (0ms delay)',
+      );
+    });
+
     it('formats task_started', () => {
       expect(
         formatMessage({
@@ -75,6 +81,12 @@ describe('formatMessage', () => {
           description: 'Analyzing codebase',
         }),
       ).toBe('[task:started] Analyzing codebase');
+    });
+
+    it('formats task_started with defaults when description is missing', () => {
+      expect(formatMessage({ type: 'system', subtype: 'task_started' })).toBe(
+        '[task:started] ',
+      );
     });
 
     it('formats task_notification', () => {
@@ -124,6 +136,12 @@ describe('formatMessage', () => {
           description: 'Working on fix',
         }),
       ).toBe('[task:progress] Working on fix');
+    });
+
+    it('formats task_progress with defaults when description is missing', () => {
+      expect(formatMessage({ type: 'system', subtype: 'task_progress' })).toBe(
+        '[task:progress] ',
+      );
     });
 
     it('formats local_command_output', () => {
@@ -415,6 +433,12 @@ describe('formatMessage', () => {
     it('formats error result falling back to unknown when error is missing', () => {
       expect(formatMessage({ type: 'result', success: false, turns: 0 })).toBe(
         '[result:error] unknown error (0 turns)',
+      );
+    });
+
+    it('defaults turns to 0 when the field is absent', () => {
+      expect(formatMessage({ type: 'result', success: true })).toBe(
+        '[result] done in 0 turns\n',
       );
     });
   });

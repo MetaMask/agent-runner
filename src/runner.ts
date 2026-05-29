@@ -1,5 +1,9 @@
 import { createClaudeAdapter } from './adapters/claude-adapter.js';
-import { AgentRunnerError, MessageHandlerError } from './errors.js';
+import {
+  AgentRunnerError,
+  MessageHandlerError,
+  SandboxConfigurationError,
+} from './errors.js';
 import { executeJudge } from './judge/executor.js';
 import { postScores as postScoresToLangfuse } from './judge/scoring.js';
 import type {
@@ -9,6 +13,7 @@ import type {
   JudgeResult,
   ScoreEntry,
 } from './judge/types.js';
+import { resolveSandboxConfig } from './sandbox/config.js';
 import { createTelemetryController } from './telemetry/controller.js';
 import { createMessageHandler } from './telemetry/message-handler.js';
 import type {
@@ -123,7 +128,24 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
       let runError: Error | undefined;
 
       try {
-        const runConfig: RunConfig = { prompt: runOptions.prompt, options };
+        const sandbox = resolveSandboxConfig(
+          config.sandbox,
+          runOptions.sandbox,
+        );
+
+        if (sandbox !== undefined) {
+          const supported = adapter.capabilities?.sandboxes ?? [];
+          if (!supported.includes(sandbox.type)) {
+            throw new SandboxConfigurationError(
+              `Provider adapter \`${adapter.name}\` does not support sandbox type \`${sandbox.type}\`.`,
+            );
+          }
+        }
+
+        const runConfig: RunConfig =
+          sandbox === undefined
+            ? { prompt: runOptions.prompt, options }
+            : { prompt: runOptions.prompt, options, sandbox };
         for await (const message of adapter.run(runConfig)) {
           messages.push(message);
           handler?.handleMessage(message);

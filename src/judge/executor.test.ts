@@ -211,6 +211,37 @@ describe('executeJudge', () => {
     expect(prompt).toContain('error: timeout');
   });
 
+  it('uses an empty summary for unknown message types defensively', async () => {
+    const runResult: AgentRunResult = {
+      ...minimalRunResult,
+      messages: [
+        ...minimalRunResult.messages,
+        {
+          type: 'future_message',
+        } as unknown as AgentRunResult['messages'][number],
+      ],
+    };
+    const judgeOutput = JSON.stringify({
+      quality: 7,
+      accuracy: 4,
+      reasoning: 'Handled unknown message.',
+    });
+    claudeMocks.query.mockReturnValueOnce(
+      yieldMessages([
+        { type: 'result', subtype: 'success', result: judgeOutput },
+      ]),
+    );
+
+    await executeJudge(runResult, baseConfig);
+
+    const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    const prompt = callArgs.prompt as string;
+    expect(prompt).toContain('[2] future_message: ');
+  });
+
   it('passes correct options to query() with defaults', async () => {
     const judgeOutput = JSON.stringify({
       quality: 8,
