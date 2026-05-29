@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DockerSandboxError } from '../../errors.js';
-import { createDefaultDockerCommandRunner } from './command-runner.js';
+import {
+  createDefaultDockerCommandRunner,
+  createStderrAccumulator,
+} from './command-runner.js';
 import type { DockerCommandRunner } from './command-runner.js';
 
 const runner: DockerCommandRunner = createDefaultDockerCommandRunner();
@@ -331,36 +334,79 @@ describe('createDefaultDockerCommandRunner', () => {
     expect(lines[0]).toHaveLength(500);
     expect(result.exitCode).toBe(0);
   });
+});
 
-  it('truncates stderr when it exceeds the 64KB cap', async () => {
-    const result = await runner.run(
-      'node',
-      [
-        '-e',
-        'const fs=require("fs");fs.writeSync(2,"x".repeat(70000));process.exit(0);',
-      ],
-      { allowNonZeroExit: true },
-    );
+describe('createStderrAccumulator', () => {
+  const HEADER = '[stderr truncated — showing last ~64KB]\n';
 
-    expect(
-      result.stderr.startsWith('[stderr truncated — showing last ~64KB]\n'),
-    ).toBe(true);
-    const xs = result.stderr.slice(
-      '[stderr truncated — showing last ~64KB]\n'.length,
-    );
-    expect(xs).toHaveLength(65536);
-    expect(xs).toMatch(/^x+$/u);
+  it('returns the full stderr when total bytes are under the cap', () => {
+    const acc = createStderrAccumulator(20);
+    acc.append('hello');
+    acc.append(' world');
+    expect(acc.getResult()).toBe('hello world');
   });
 
-  it('fully discards leading chunks when they fit within the excess during truncation', async () => {
-    const result = await runner.run(
-      'node',
-      ['-e', 'for(let i=0;i<700;i++){process.stderr.write("y".repeat(100))}'],
-      { allowNonZeroExit: true },
-    );
+  it('returns the full stderr when total bytes exactly equal the cap', () => {
+    const acc = createStderrAccumulator(10);
+    acc.append('abcde');
+    acc.append('fghij');
+    expect(acc.getResult()).toBe('abcdefghij');
+  });
 
-    expect(
-      result.stderr.startsWith('[stderr truncated — showing last ~64KB]\n'),
-    ).toBe(true);
+  it('truncates when a single chunk exceeds the cap', () => {
+    const acc = createStderrAccumulator(10);
+    // 20 bytes in one shot — exercises the "single oversized chunk" branch.
+    acc.append('abcdefghijklmnopqrst');
+    const result = acc.getResult();
+    expect(result.startsWith(HEADER)).toBe(true);
+    expect(result.slice(HEADER.length)).toBe('klmnopqrst');
+  });
+
+  it('partially trims the leading chunk when it is larger than the excess', () => {
+    const acc = createStderrAccumulator(10);
+    acc.append('abcdefgh'); // 8 bytes
+    acc.append('ijklm'); // +5 = 13 total, excess = 3
+    // 'abcdefgh' (8) > excess (3) → partial trim → keep 'defgh'
+    const result = acc.getResult();
+    expect(result.startsWith(HEADER)).toBe(true);
+    expect(result.slice(HEADER.length)).toBe('defghijklm');
+  });
+
+  it('fully discards leading chunks that fit within the excess', () => {
+    const acc = createStderrAccumulator(10);
+    acc.append('ab'); // 2
+    acc.append('cd'); // 4
+    acc.append('efghijklm'); // +9 = 13, excess = 3
+    // 'ab' (2) <= excess (3) → discard, excess → 1
+    // 'cd' (2) > excess (1) → partial trim → keep 'd'
+    const result = acc.getResult();
+    expect(result.startsWith(HEADER)).toBe(true);
+    expect(result.slice(HEADER.length)).toBe('defghijklm');
+  });
+
+  it('discards multiple leading chunks in a single append', () => {
+    const acc = createStderrAccumulator(10);
+    acc.append('aa'); // 2
+    acc.append('bb'); // 4
+    acc.append('cc'); // 6
+    acc.append('dddddddddd'); // +10 = 16, excess = 6
+    // 'aa' (2) <= 6 → discard, excess → 4
+    // 'bb' (2) <= 4 → discard, excess → 2
+    // 'cc' (2) <= 2 → discard, excess → 0  (exactly at cap)
+    const result = acc.getResult();
+    expect(result.startsWith(HEADER)).toBe(true);
+    expect(result.slice(HEADER.length)).toBe('dddddddddd');
+  });
+
+  it('handles repeated appends that each trigger eviction', () => {
+    const acc = createStderrAccumulator(6);
+    acc.append('aaa'); // 3
+    acc.append('bbb'); // 6 — at cap, no eviction
+    expect(acc.getResult()).toBe('aaabbb');
+
+    acc.append('cc'); // 8, excess = 2 → trim 'aaa' partially → 'a'
+    const result = acc.getResult();
+    expect(result.startsWith(HEADER)).toBe(true);
+    expect(result.slice(HEADER.length)).toBe('abbbcc');
   });
 });

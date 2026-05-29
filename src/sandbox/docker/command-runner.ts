@@ -94,6 +94,97 @@ export type DockerCommandRunner = {
 const STDERR_CAP = 65536;
 
 /**
+ * A rolling stderr buffer that keeps at most `cap` bytes of the most
+ * recent output, discarding the oldest data when the total exceeds the
+ * limit.
+ */
+export type StderrAccumulator = {
+  /** Appends a UTF-8 chunk to the buffer, evicting old data as needed. */
+  append(chunk: string): void;
+  /**
+   * Returns the accumulated stderr string. When data was evicted, the
+   * result is prefixed with a truncation notice.
+   */
+  getResult(): string;
+};
+
+/**
+ * Creates a rolling stderr buffer capped at `cap` bytes (default 64 KB).
+ *
+ * Chunks are stored verbatim and only trimmed when the cumulative byte
+ * length exceeds the cap. Two eviction strategies apply in order:
+ *
+ * 1. **Full discard** — when the oldest chunk fits entirely within the
+ *    excess, it is shifted off the queue.
+ * 2. **Partial trim** — the oldest chunk is sliced so the excess bytes
+ *    are removed from the front.
+ *
+ * A single chunk larger than the cap is handled as a special case: the
+ * buffer is replaced with the trailing `cap` bytes of that chunk.
+ *
+ * @param cap - Maximum retained byte length. Defaults to
+ *   {@link STDERR_CAP} (65 536).
+ * @returns A {@link StderrAccumulator} instance.
+ */
+export function createStderrAccumulator(
+  cap: number = STDERR_CAP,
+): StderrAccumulator {
+  let chunks: string[] = [];
+  let byteLength = 0;
+  let truncated = false;
+
+  /**
+   * @param chunk - A UTF-8 string chunk to append to the buffer.
+   */
+  const append = (chunk: string): void => {
+    const chunkBytes = Buffer.byteLength(chunk, 'utf8');
+    if (chunkBytes > cap) {
+      const raw = Buffer.from(chunk, 'utf8');
+      const tail = raw.subarray(-cap).toString('utf8');
+      chunks = [tail];
+      byteLength = Buffer.byteLength(tail, 'utf8');
+      truncated = true;
+      return;
+    }
+
+    chunks.push(chunk);
+    byteLength += chunkBytes;
+
+    while (byteLength > cap && chunks.length > 0) {
+      const excess = byteLength - cap;
+      const first = chunks[0] as string;
+      const firstBytes = Buffer.byteLength(first, 'utf8');
+
+      if (firstBytes <= excess) {
+        chunks.shift();
+        byteLength -= firstBytes;
+        truncated = true;
+      } else {
+        const raw = Buffer.from(first, 'utf8');
+        const kept = raw.subarray(excess).toString('utf8');
+        chunks[0] = kept;
+        byteLength -= firstBytes - Buffer.byteLength(kept, 'utf8');
+        truncated = true;
+        break;
+      }
+    }
+  };
+
+  /**
+   * @returns The accumulated stderr, prefixed with a truncation notice
+   *   when data was evicted.
+   */
+  const getResult = (): string => {
+    const stderr = chunks.join('');
+    return truncated
+      ? `[stderr truncated — showing last ~64KB]\n${stderr}`
+      : stderr;
+  };
+
+  return { append, getResult };
+}
+
+/**
  * Default implementation of {@link DockerCommandRunner} backed by
  * {@link spawn}.
  *
@@ -166,9 +257,7 @@ async function runWithSpawn(
     }
 
     let stdout = '';
-    let stderrChunks: string[] = [];
-    let stderrByteLength = 0;
-    let stderrTruncated = false;
+    const stderrAccumulator = createStderrAccumulator();
     let stdoutBuffer = '';
     let settled = false;
     const isStreamingStdout = options?.onStdoutLine !== undefined;
@@ -185,46 +274,6 @@ async function runWithSpawn(
       }
       settled = true;
       resolution();
-    };
-
-    /**
-     * Appends a stderr chunk to the rolling buffer, evicting the oldest
-     * data when the total exceeds the cap.
-     *
-     * @param chunk - A UTF-8 string chunk received from the child stderr stream.
-     */
-    const appendStderr = (chunk: string): void => {
-      const chunkBytes = Buffer.byteLength(chunk, 'utf8');
-      if (chunkBytes > STDERR_CAP) {
-        const raw = Buffer.from(chunk, 'utf8');
-        const tail = raw.subarray(-STDERR_CAP).toString('utf8');
-        stderrChunks = [tail];
-        stderrByteLength = Buffer.byteLength(tail, 'utf8');
-        stderrTruncated = true;
-        return;
-      }
-
-      stderrChunks.push(chunk);
-      stderrByteLength += chunkBytes;
-
-      while (stderrByteLength > STDERR_CAP && stderrChunks.length > 0) {
-        const excess = stderrByteLength - STDERR_CAP;
-        const first = stderrChunks[0] as string;
-        const firstBytes = Buffer.byteLength(first, 'utf8');
-
-        if (firstBytes <= excess) {
-          stderrChunks.shift();
-          stderrByteLength -= firstBytes;
-          stderrTruncated = true;
-        } else {
-          const raw = Buffer.from(first, 'utf8');
-          const kept = raw.subarray(excess).toString('utf8');
-          stderrChunks[0] = kept;
-          stderrByteLength -= firstBytes - Buffer.byteLength(kept, 'utf8');
-          stderrTruncated = true;
-          break;
-        }
-      }
     };
 
     child.stdout.setEncoding('utf8');
@@ -265,7 +314,7 @@ async function runWithSpawn(
     });
 
     child.stderr.on('data', (chunk: string) => {
-      appendStderr(chunk);
+      stderrAccumulator.append(chunk);
     });
 
     child.on('error', (cause: Error) => {
@@ -282,10 +331,7 @@ async function runWithSpawn(
         options.onStdoutLine(trailing);
       }
 
-      let stderr = stderrChunks.join('');
-      if (stderrTruncated) {
-        stderr = `[stderr truncated — showing last ~64KB]\n${stderr}`;
-      }
+      const stderr = stderrAccumulator.getResult();
 
       if (signal !== null || code === null) {
         // The signal branch covers both `signal !== null` and the rare
