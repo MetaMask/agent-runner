@@ -1,0 +1,34 @@
+src/sandbox/docker/command-runner.ts
+  s_1159f61b0e8a2e::t_e1e8a5b206fa23 317
+  s_1159f61b0e8a2e::t_6c6a4e76cbf413 97-135,139-172,177-186
+  s_1159f61b0e8a2e::t_7d058e964211b3 137
+  s_1159f61b0e8a2e::t_935286c7fceeba 334
+  s_1159f61b0e8a2e::t_94dbe04f58292c 260
+  s_1159f61b0e8a2e::t_00dc517687a94c 174-175
+src/sandbox/docker/command-runner.test.ts
+  s_1159f61b0e8a2e::t_2051e3b1bbf049 4-7
+  s_1159f61b0e8a2e::t_60e77d8cc800e0 337,339-340,342-346,349-405,407-410
+vitest.config.mts
+  s_1159f61b0e8a2e::t_077d1c22dfa123 20-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8739a7a5c5c58b98ac09995ad2e99a5ee527a93",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_1159f61b0e8a2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_18f4eac7affeDnpIWn4a3Ti26G",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
