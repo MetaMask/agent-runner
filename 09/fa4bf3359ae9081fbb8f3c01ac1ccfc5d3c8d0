@@ -1,0 +1,43 @@
+package.json
+  s_28d3cf2ed3507d::t_7acfaf69705e43 100
+.github/workflows/main.yml
+  s_28d3cf2ed3507d::t_eddc4fa0f39b25 120
+.github/zizmor.yml
+  s_28d3cf2ed3507d::t_9c7f837432641f 1-16
+.github/workflows/publish-release.yml
+  s_28d3cf2ed3507d::t_f1b78284046084 53
+  s_28d3cf2ed3507d::t_519f18fc7065bf 80-84
+  s_28d3cf2ed3507d::t_38bc8855b1aeb6 7
+  s_28d3cf2ed3507d::t_6c481482b6f601 64-66
+yarn.lock
+  s_07a7b61af19cc9::t_ec5090f56b5cc7 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "09fa4bf3359ae9081fbb8f3c01ac1ccfc5d3c8d0",
+  "prompts": {},
+  "humans": {
+    "h_d6a04d82b61d5e": {
+      "author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  },
+  "sessions": {
+    "s_07a7b61af19cc9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047ef0120ffe4yqreyFKxbdmPf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_28d3cf2ed3507d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_047ef0120ffe4yqreyFKxbdmPf",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
