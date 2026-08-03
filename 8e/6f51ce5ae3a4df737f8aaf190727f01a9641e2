@@ -1,0 +1,52 @@
+src/telemetry/message-handler.ts
+  s_1b6cd192dbca76::t_593378abeb0cef 403
+  s_1b6cd192dbca76::t_332d2708898562 405
+  s_1b6cd192dbca76::t_0fe1b22096ffc8 290
+  s_1b6cd192dbca76::t_d9bc77dab0e852 2
+  s_1b6cd192dbca76::t_85fa494b698f68 32-35
+  s_1b6cd192dbca76::t_7204019401b8b7 363
+  s_1b6cd192dbca76::t_0c1744226363ab 334,339-341
+  s_1b6cd192dbca76::t_cbcfbfcae1d40b 31,164-167,170,176-209,217
+  s_1b6cd192dbca76::t_a3b53885aeff2d 168-169,171-175
+  s_1b6cd192dbca76::t_6ee27865d03316 365
+  s_1b6cd192dbca76::t_f90356447571f3 245
+src/types.ts
+  s_1b6cd192dbca76::t_3e925325988bd0 324-329
+  s_1b6cd192dbca76::t_2285b2136eb267 291-305
+  s_1b6cd192dbca76::t_6a8e9b4cf20b6c 290
+README.md
+  s_1b6cd192dbca76::t_99d2ff8685d9b3 206-229
+src/telemetry/controller.ts
+  s_1b6cd192dbca76::t_4e26c75c59077c 40
+  s_1b6cd192dbca76::t_9ab42f6fda19fe 6-10
+  s_1b6cd192dbca76::t_fdd705f4eb2896 165
+  s_1b6cd192dbca76::t_c3289b4f4e4fb7 22-25
+src/index.ts
+  s_1b6cd192dbca76::t_57c3096f8fa5ef 39
+src/runner.ts
+  s_1b6cd192dbca76::t_9f1b89e8db9f3a 119
+src/telemetry/message-handler.test.ts
+  s_1b6cd192dbca76::t_9b5355e4cb0c6e 533-535
+  s_1b6cd192dbca76::t_e0852a8abc8d68 470
+  s_1b6cd192dbca76::t_1688ef9aab8416 442-455,461-469,478-532,536-598
+  s_1b6cd192dbca76::t_621e26a9db11dc 456-460,471-477
+vitest.config.mts
+  s_1b6cd192dbca76::t_e952b447b34b83 21
+  s_1b6cd192dbca76::t_f85c3b3a8632d7 20,22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8e6f51ce5ae3a4df737f8aaf190727f01a9641e2",
+  "prompts": {},
+  "sessions": {
+    "s_1b6cd192dbca76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_03804732cffeNOgUEC06mWXEUb",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
