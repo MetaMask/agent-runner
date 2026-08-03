@@ -288,6 +288,22 @@ export type TelemetryResourceAttributes = Record<
 >;
 
 /**
+ * Value-level redactor applied to every string leaf of span input/output
+ * before it is exported to the telemetry backend.
+ *
+ * Unlike the blanket {@link TelemetryConfig.redact} flag, a redactor keeps the
+ * surrounding structure and text intact and only scrubs the secret substrings
+ * it recognises (e.g. mnemonics, private keys, API tokens). It runs regardless
+ * of the `redact` flag, which lets callers keep full-fidelity traces while
+ * still stripping secrets. When `redact` is `true`, the blanket `[REDACTED]`
+ * replacement takes precedence and the redactor is not invoked for that value.
+ *
+ * @param text - A string leaf from span input or output.
+ * @returns The scrubbed string.
+ */
+export type TelemetryRedactor = (text: string) => string;
+
+/**
  * Configuration for Langfuse and OpenTelemetry telemetry.
  */
 export type TelemetryConfig = {
@@ -305,6 +321,12 @@ export type TelemetryConfig = {
   resourceAttributes?: TelemetryResourceAttributes;
   /** Whether to redact prompts and tool I/O from traces. */
   redact?: boolean;
+  /**
+   * Value-level redactor applied to string leaves of span input/output.
+   * Runs regardless of `redact`; skipped for any value the `redact` flag
+   * has already replaced with `[REDACTED]`. Defaults to a no-op.
+   */
+  redactor?: TelemetryRedactor;
 };
 
 /**
