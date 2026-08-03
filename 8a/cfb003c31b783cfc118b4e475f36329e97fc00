@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_1b6cd192dbca76::t_ef1bc7a2ba9f63 10-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8acfb003c31b783cfc118b4e475f36329e97fc00",
+  "prompts": {},
+  "sessions": {
+    "s_1b6cd192dbca76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_03804732cffeNOgUEC06mWXEUb",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
