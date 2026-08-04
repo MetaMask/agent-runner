@@ -116,6 +116,7 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
             model: (options.model as string) ?? 'unknown',
             maxTurns: (options.maxTurns as number) ?? 0,
             redact: telemetry.redact,
+            redactor: telemetry.redactor,
             userId: runOptions.telemetry?.userId ?? 'unknown',
             initialSessionId: runOptions.telemetry?.sessionId,
             traceName: runOptions.telemetry?.traceName,

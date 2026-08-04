@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Value-level telemetry redaction: `TelemetryConfig` now accepts an optional
+  `redactor` function (`TelemetryRedactor`) that scrubs secret values from
+  Langfuse span input/output while preserving trace fidelity. It runs on string
+  leaves at every span I/O site (prompt, generation input/output, tool inputs
+  recursed with structure preserved, tool results, tool labels, and final
+  output), runs regardless of the `redact` flag, defaults to a no-op, and is
+  skipped for any value the blanket `redact` flag has already replaced.
+
 ## [0.2.0]
 
 ### Added

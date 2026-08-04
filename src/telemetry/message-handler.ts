@@ -1,5 +1,5 @@
 import { redactSensitive } from '../message-parser.js';
-import type { AgentMessage, ToolCall } from '../types.js';
+import type { AgentMessage, TelemetryRedactor, ToolCall } from '../types.js';
 import {
   createSessionSpan,
   recordSpanError,
@@ -28,6 +28,11 @@ export type MessageHandlerConfig = {
    * Whether sensitive prompt and payload values should be redacted.
    */
   redact: boolean;
+  /**
+   * Optional value-level redactor applied to span I/O string leaves when
+   * blanket redaction is not already in effect for that value.
+   */
+  redactor?: TelemetryRedactor | undefined;
   /**
    * The user identifier to attach to trace propagation.
    */
@@ -156,6 +161,52 @@ export type MessageHandler = {
 export function createMessageHandler(
   config: MessageHandlerConfig,
 ): MessageHandler {
+  /**
+   * Applies the configured value-level redactor to a string, if any.
+   *
+   * @param value - The string leaf to scrub.
+   * @returns The scrubbed string, or the original when no redactor is set
+   * or the value is undefined.
+   */
+  function scrubText<Value extends string | undefined>(value: Value): Value {
+    if (config.redactor && typeof value === 'string') {
+      return config.redactor(value) as Value;
+    }
+    return value;
+  }
+
+  /**
+   * Recursively applies the value-level redactor to string leaves of a
+   * structured value, preserving the surrounding object and array shape.
+   *
+   * @param value - The value to scrub.
+   * @returns The value with string leaves scrubbed.
+   */
+  function scrubValueLeaves(value: unknown): unknown {
+    if (!config.redactor) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      return config.redactor(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(scrubValueLeaves);
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [
+          key,
+          scrubValueLeaves(entry),
+        ]),
+      );
+    }
+
+    return value;
+  }
+
   const state: MessageHandlerState = {
     totalInputTokens: 0,
     totalOutputTokens: 0,
@@ -163,7 +214,7 @@ export function createMessageHandler(
     finalResult: undefined,
     langfuseSessionId: config.initialSessionId,
     sessionSpan: undefined,
-    lastTurnInput: config.redact ? '[REDACTED]' : config.prompt,
+    lastTurnInput: config.redact ? '[REDACTED]' : scrubText(config.prompt),
     traceId: undefined,
     runError: undefined,
     pendingTools: new Map(),
@@ -191,7 +242,7 @@ export function createMessageHandler(
       () => {
         const session = createSessionSpan(
           config.traceName ?? 'agent-runner',
-          config.prompt,
+          config.redact ? config.prompt : scrubText(config.prompt),
           {
             model: message.model ?? config.model,
             maxTurns: config.maxTurns,
@@ -236,7 +287,7 @@ export function createMessageHandler(
 
         const output = config.redact
           ? '[REDACTED]'
-          : message.text || JSON.stringify(message.toolCalls);
+          : scrubText(message.text || JSON.stringify(message.toolCalls));
         const span = parent.startObservation(
           message.model || config.model,
           {
@@ -280,12 +331,14 @@ export function createMessageHandler(
     }
 
     pendingTool.span.update({
-      output: config.redact ? '[REDACTED]' : message.content,
+      output: config.redact ? '[REDACTED]' : scrubText(message.content),
       metadata: { isError: message.isError },
     });
     pendingTool.span.end();
     state.pendingTools.delete(message.toolUseId);
-    state.lastTurnInput = config.redact ? '[REDACTED]' : message.content;
+    state.lastTurnInput = config.redact
+      ? '[REDACTED]'
+      : scrubText(message.content);
   }
 
   /**
@@ -307,9 +360,9 @@ export function createMessageHandler(
   function createPendingToolSpan(toolCall: ToolCall): void {
     const input = config.redact
       ? redactSensitive(toolCall.input)
-      : toolCall.input;
+      : scrubValueLeaves(toolCall.input);
     const span = state.sessionSpan?.startObservation(
-      formatToolLabel(toolCall.name, toolCall.input),
+      formatToolLabel(toolCall.name, input),
       { input },
       { asType: 'tool' },
     );
@@ -347,10 +400,9 @@ export function createMessageHandler(
       state.finalResult === undefined ? 'unknown' : 'completed';
     const status = hasError ? 'error' : finalStatus;
 
+    const finalOutput = state.runError?.message ?? state.finalResult;
     state.sessionSpan.update({
-      output: config.redact
-        ? '[REDACTED]'
-        : (state.runError?.message ?? state.finalResult),
+      output: config.redact ? '[REDACTED]' : scrubText(finalOutput),
       level: hasError ? 'ERROR' : undefined,
       statusMessage: hasError ? state.runError?.message : undefined,
       metadata: {

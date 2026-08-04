@@ -203,6 +203,30 @@ agent-runner (root session span)
 
 When `redact: true` is set on telemetry config, prompts and tool I/O are replaced with `[REDACTED]` in spans. Sensitive keys (`password`, `secret`, `srp`, `mnemonic`, `privatekey`, `token`, `apikey`, etc.) are recursively redacted from tool inputs regardless of the redact flag.
 
+#### Value-level redaction
+
+For full-fidelity traces that still strip secret values, provide a `redactor` function. It receives each string leaf of span input/output (the prompt, generation input/output, tool inputs, tool results, and the final output) and returns a scrubbed string. Structure is preserved: for tool inputs the redactor is applied recursively to string leaves only, so the surrounding command and argument shape stay intact.
+
+```ts
+import { createAgentRunner } from '@metamask/agent-runner';
+import type { TelemetryRedactor } from '@metamask/agent-runner';
+
+const redactSecrets: TelemetryRedactor = (text) =>
+  text.replaceAll(process.env.AI_CLI_SRP ?? '\0', '[REDACTED_SRP]');
+
+const runner = createAgentRunner({
+  telemetry: {
+    mode: 'enabled',
+    serviceName: 'metamask-evals',
+    // Keep spans readable but scrub secrets:
+    redact: false,
+    redactor: redactSecrets,
+  },
+});
+```
+
+The `redactor` runs regardless of the `redact` flag and defaults to a no-op (behavior-preserving). When `redact: true`, the blanket `[REDACTED]` replacement takes precedence and the redactor is not invoked for that value.
+
 ### LLM-as-a-judge
 
 The runner exposes a `judge()` method that runs a second LLM pass to evaluate a completed agent run. The judge receives the full message transcript, a rubric (system prompt), and a structured output schema derived from the configured score fields.

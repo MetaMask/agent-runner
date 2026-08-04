@@ -3,7 +3,11 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
 import { TelemetryConfigurationError } from '../errors.js';
-import type { TelemetryConfig, TelemetryLifecycle } from '../types.js';
+import type {
+  TelemetryConfig,
+  TelemetryLifecycle,
+  TelemetryRedactor,
+} from '../types.js';
 import { resolveTelemetryConfig } from './env.js';
 import { setLangfuseProcessor } from './tracing.js';
 
@@ -15,6 +19,10 @@ export type TelemetryController = TelemetryLifecycle & {
    * Whether redaction is enabled.
    */
   redact: boolean;
+  /**
+   * Optional value-level redactor for span input/output string leaves.
+   */
+  redactor: TelemetryRedactor | undefined;
 };
 
 /**
@@ -29,6 +37,7 @@ function noopTelemetryController(
   return {
     enabled: false,
     redact: config?.redact ?? false,
+    redactor: config?.redactor,
     /**
      * No-op flush.
      *
@@ -153,6 +162,7 @@ export function createTelemetryController(
   return {
     enabled: true,
     redact: config.redact ?? false,
+    redactor: config.redactor,
     /**
      * Force-flushes pending spans to the Langfuse backend.
      */

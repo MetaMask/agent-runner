@@ -36,6 +36,7 @@ export type {
   ScoreEntry,
   TelemetryConfig,
   TelemetryLifecycle,
+  TelemetryRedactor,
   TokenUsage,
   ToolCall,
 } from './types.js';

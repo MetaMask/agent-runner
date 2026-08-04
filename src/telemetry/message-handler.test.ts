@@ -439,6 +439,163 @@ describe('createMessageHandler', () => {
     });
   });
 
+  it('scrubs secret leaves of a Bash tool input while preserving structure', () => {
+    const mnemonic =
+      'test test test test test test test test test test test junk';
+    const redactor = (text: string): string =>
+      text.replace(mnemonic, '[SCRUBBED]');
+    const handler = createHandler({ redact: false, redactor });
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+
+    handler.handleMessage(
+      createGeneration({
+        toolCalls: [
+          {
+            id: 'bash-1',
+            name: 'Bash',
+            input: {
+              command: `mm clipboard write '${mnemonic}'`,
+              args: [mnemonic, 'plain'],
+              timeout: 5000,
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(
+      handler.getState().sessionSpan?.startObservation,
+    ).toHaveBeenNthCalledWith(
+      2,
+      "Bash: mm clipboard write '[SCRUBBED]'",
+      {
+        input: {
+          command: "mm clipboard write '[SCRUBBED]'",
+          args: ['[SCRUBBED]', 'plain'],
+          timeout: 5000,
+        },
+      },
+      { asType: 'tool' },
+    );
+  });
+
+  it('scrubs secret leaves across prompt, generation, tool result, and final output', () => {
+    const redactor = (text: string): string =>
+      text.replaceAll('SECRET', '[SCRUBBED]');
+    const handler = createHandler({
+      prompt: 'prompt with SECRET value',
+      redact: false,
+      redactor,
+    });
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+    handler.handleMessage(
+      createGeneration({ text: 'assistant SECRET output' }),
+    );
+
+    expect(tracingMocks.createSessionSpan).toHaveBeenCalledWith(
+      'agent-runner',
+      'prompt with [SCRUBBED] value',
+      expect.any(Object),
+      false,
+    );
+    expect(
+      handler.getState().sessionSpan?.startObservation,
+    ).toHaveBeenNthCalledWith(
+      1,
+      'claude-sonnet',
+      {
+        input: 'prompt with [SCRUBBED] value',
+        output: 'assistant [SCRUBBED] output',
+        metadata: { stopReason: 'end_turn' },
+      },
+      { asType: 'generation' },
+    );
+
+    handler.handleMessage(
+      createGeneration({
+        toolCalls: [
+          { id: 'tool-1', name: 'Read', input: { file_path: '/tmp/a.ts' } },
+        ],
+      }),
+    );
+    const toolSpan = handler.getState().pendingTools.get('tool-1')?.span;
+    handler.handleMessage({
+      type: 'tool_result',
+      toolUseId: 'tool-1',
+      content: 'result with SECRET data',
+      isError: false,
+    });
+
+    expect(toolSpan?.update).toHaveBeenCalledWith({
+      output: 'result with [SCRUBBED] data',
+      metadata: { isError: false },
+    });
+    expect(handler.getState().lastTurnInput).toBe(
+      'result with [SCRUBBED] data',
+    );
+
+    handler.handleMessage({
+      type: 'result',
+      success: true,
+      result: 'final SECRET output',
+    });
+    const { sessionSpan } = handler.getState();
+    handler.finalizeSessionSpan();
+
+    expect(sessionSpan?.update).toHaveBeenCalledWith(
+      expect.objectContaining({ output: 'final [SCRUBBED] output' }),
+    );
+  });
+
+  it('does not invoke the redactor when blanket redact is enabled', () => {
+    const redactor = vi.fn((text: string) => text);
+    const handler = createHandler({ redact: true, redactor });
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+    handler.handleMessage(
+      createGeneration({
+        toolCalls: [
+          { id: 'tool-1', name: 'Bash', input: { command: 'run secret' } },
+        ],
+      }),
+    );
+    handler.handleMessage({
+      type: 'tool_result',
+      toolUseId: 'tool-1',
+      content: 'secret output',
+      isError: false,
+    });
+    handler.handleMessage({
+      type: 'result',
+      success: true,
+      result: 'final output',
+    });
+    handler.finalizeSessionSpan();
+
+    expect(redactor).not.toHaveBeenCalled();
+  });
+
+  it('leaves span I/O unchanged when no redactor is configured', () => {
+    const handler = createHandler({ redact: false });
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+
+    handler.handleMessage(
+      createGeneration({
+        toolCalls: [
+          { id: 'tool-1', name: 'Bash', input: { command: 'npm test' } },
+        ],
+      }),
+    );
+
+    expect(
+      handler.getState().sessionSpan?.startObservation,
+    ).toHaveBeenNthCalledWith(
+      2,
+      'Bash: npm test',
+      { input: { command: 'npm test' } },
+      { asType: 'tool' },
+    );
+  });
+
   it('formats Bash, Read, Edit, and long Bash tool labels', () => {
     const handler = createHandler();
     handler.handleMessage({ type: 'init', sessionId: 'session-1' });
