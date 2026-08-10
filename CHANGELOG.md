@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Uncategorized
+
+- chore(deps): upgrade @anthropic-ai/claude-agent-sdk to ^0.3.220 ([#21](https://github.com/MetaMask/agent-runner/pull/21))
+
 ### Added
 
+- feat: add value-level redactor to telemetry span I/O ([#20](https://github.com/MetaMask/agent-runner/pull/20))
 - Value-level telemetry redaction: `TelemetryConfig` now accepts an optional
   `redactor` function (`TelemetryRedactor`) that scrubs secret values from
   Langfuse span input/output while preserving trace fidelity. It runs on string
@@ -56,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix: cleanup unused publish docs ([#8](https://github.com/MetaMask/agent-runner/pull/8))
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
