@@ -294,6 +294,15 @@ export type ProviderAdapter<
   runStructured?: (
     config: RunStructuredConfig<TOptions>,
   ) => AsyncIterable<AgentMessage>;
+  /**
+   * Projects runner default options onto the subset safe to inherit for a
+   * structured-output run, dropping agent-execution policy fields (e.g.
+   * `tools`). Omitted means no defaults are inherited for structured runs.
+   *
+   * @param defaults - The runner-level default options.
+   * @returns The subset of defaults safe to merge under structured overrides.
+   */
+  getStructuredDefaults?: (defaults: Partial<TOptions>) => Partial<TOptions>;
   /** Extracts provider-specific run metadata without exposing option keys to the runner. */
   getRunMetadata?: (options: Partial<TOptions>) => ProviderRunMetadata;
   /**

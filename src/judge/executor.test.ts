@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createClaudeAdapter } from '../adapters/claude-adapter.js';
 import { JudgeError } from '../errors.js';
-import type { AgentRunResult } from '../types.js';
+import type {
+  AgentMessage,
+  AgentRunResult,
+  ProviderAdapter,
+  RunStructuredConfig,
+} from '../types.js';
 import { executeJudge } from './executor.js';
 import type { JudgeConfig, JudgeContext } from './types.js';
 
@@ -1045,5 +1050,96 @@ describe('executeJudge', () => {
     expect(prompt).toContain('&lt;script&gt;');
     expect(prompt).toContain('failed &amp; retried');
     expect(prompt).not.toContain('<script>');
+  });
+
+  describe('structuredDefaults inheritance', () => {
+    const judgeOutput = JSON.stringify({
+      quality: 8,
+      accuracy: 4,
+      reasoning: 'Good.',
+    });
+
+    /** Captures the options passed to a fake adapter's structured run. */
+    type OptionsSink = { options?: Record<string, unknown> };
+
+    /**
+     * Builds a fake adapter that records the structured-run options.
+     *
+     * @param sink - Receives the options passed to `runStructured`.
+     * @returns A minimal provider adapter for judge execution.
+     */
+    function createCapturingAdapter(
+      sink: OptionsSink,
+    ): ProviderAdapter<Record<string, unknown>, string> {
+      return {
+        name: 'fake',
+        async *run(): AsyncGenerator<AgentMessage> {
+          yield await Promise.reject(
+            new Error('run is not used by structured judging'),
+          );
+        },
+        getStructuredDefaults(
+          defaults: Record<string, unknown>,
+        ): Record<string, unknown> {
+          const { tools: _tools, ...safe } = defaults;
+          return safe;
+        },
+        async *runStructured(
+          config: RunStructuredConfig<Record<string, unknown>>,
+        ): AsyncGenerator<AgentMessage> {
+          sink.options = config.options;
+          yield { type: 'result', success: true, result: judgeOutput };
+        },
+      };
+    }
+
+    it('merges inherited defaults beneath queryOptions', async () => {
+      const sink: { options?: Record<string, unknown> } = {};
+      const config: JudgeConfig<Record<string, unknown>> = {
+        ...baseConfig,
+        queryOptions: { model: 'override-model' },
+      };
+
+      await executeJudge(
+        createCapturingAdapter(sink),
+        minimalRunResult,
+        config,
+        undefined,
+        undefined,
+        { model: 'default-model', cwd: '/repo' },
+      );
+
+      expect(sink.options).toStrictEqual({
+        model: 'override-model',
+        cwd: '/repo',
+      });
+    });
+
+    it('uses inherited defaults when queryOptions is absent', async () => {
+      const sink: { options?: Record<string, unknown> } = {};
+
+      await executeJudge(
+        createCapturingAdapter(sink),
+        minimalRunResult,
+        baseConfig,
+        undefined,
+        undefined,
+        { model: 'default-model' },
+      );
+
+      expect(sink.options).toStrictEqual({ model: 'default-model' });
+    });
+
+    it('forwards an empty options object when no defaults are provided', async () => {
+      const sink: { options?: Record<string, unknown> } = {};
+
+      await executeJudge(
+        createCapturingAdapter(sink),
+        minimalRunResult,
+        baseConfig,
+      );
+
+      expect(sink.options).toStrictEqual({});
+    });
   });
 });

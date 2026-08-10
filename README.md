@@ -113,7 +113,7 @@ await piRunner.runAgent({ prompt: 'Run the focused tests and fix failures.' });
 
 `PiQueryOptions` is package-owned and supports `model`, `cwd`, `systemPrompt`, an exact built-in `tools` allowlist, and safe provider model metadata (`contextWindow`, `maxTokens`, `reasoning`, `input`, and optional `cost`). Supported tool names are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`; the Phase 3 default is `read`/`bash`/`edit`/`write`, and `tools: []` disables all built-ins.
 
-Pi deliberately rejects Claude policy fields (`allowedTools`, `disallowedTools`, `canUseTool`, `permissionMode`, and `dangerouslySkipPermissions`), unknown tool names, and command-scoped selectors such as `bash(rm:*)`. These policies cannot be represented faithfully by Pi, so the adapter fails closed rather than silently weakening them. Structured judge runs also reject caller tool customization and expose only the terminating `submit_judgment` tool.
+Pi deliberately rejects Claude policy fields (`allowedTools`, `disallowedTools`, `canUseTool`, `permissionMode`, and `dangerouslySkipPermissions`), unknown tool names, and command-scoped selectors such as `bash(rm:*)`. These policies cannot be represented faithfully by Pi, so the adapter fails closed rather than silently weakening them. Structured judge runs also reject caller tool customization and expose only the terminating `submit_judgment` tool. A Pi judge inherits its `model` (and other model metadata) from the runner's `defaultOptions`, so `runner.judge()` works without repeating the model in `JudgeConfig.queryOptions`; the inherited `tools` policy is never carried into the judge run.
 
 > **Direct Pi tool warning:** Direct runs execute enabled Pi tools on the host with the permissions of the current process. Use Docker for untrusted prompts or tool workloads. Docker does not make credentials invisible to a model running in the container; forward only the keys the run needs.
 
@@ -599,7 +599,7 @@ Evaluates a completed agent run using a second LLM pass.
 | -------------- | ----------------------------- | -------------------------------------------------------------------------------------------------- |
 | `rubric`       | `string`                      | System prompt / evaluation rubric for the judge.                                                   |
 | `scoreFields`  | `JudgeScoreField[]`           | Score dimensions with `name`, `min`, and `max`.                                                    |
-| `queryOptions` | `Partial<ClaudeQueryOptions>` | Optional SDK query options (defaults: model `claude-sonnet-4-20250514`, tools `[]`, maxTurns `5`). |
+| `queryOptions` | `Partial<ClaudeQueryOptions>` | Optional SDK query options, merged over any runner defaults the adapter inherits for structured runs. Claude applies `tools` (`[]`), `maxTurns` (`5`), and `settingSources` (`[]`) when unset; the model falls back to the SDK default. The Pi adapter inherits `model` (and other model metadata) from `defaultOptions`, so a Pi judge no longer needs the model repeated here. |
 
 #### `JudgeContext`
 

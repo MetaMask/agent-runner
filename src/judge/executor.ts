@@ -81,6 +81,8 @@ function validateJudgeConfig<TOptions extends object>(
  * @param config - Judge configuration including rubric and score schema.
  * @param context - Optional context such as task prompt and outcome status.
  * @param onMessage - Optional callback invoked for each normalized adapter message.
+ * @param structuredDefaults - Adapter-projected runner defaults safe to inherit,
+ *   merged beneath {@link JudgeConfig.queryOptions}.
  * @returns The judge evaluation result with scores and reasoning.
  */
 export async function executeJudge<TOptions extends object, TPrompt>(
@@ -89,6 +91,7 @@ export async function executeJudge<TOptions extends object, TPrompt>(
   config: JudgeConfig<TOptions>,
   context?: JudgeContext,
   onMessage?: RunnerMessageHandler,
+  structuredDefaults?: Partial<TOptions>,
 ): Promise<JudgeResult> {
   validateJudgeConfig(config);
   if (!adapter.runStructured) {
@@ -108,7 +111,7 @@ export async function executeJudge<TOptions extends object, TPrompt>(
       prompt: userPrompt,
       systemPrompt: config.rubric,
       schema: outputSchema,
-      options: config.queryOptions ?? {},
+      options: { ...structuredDefaults, ...config.queryOptions },
     })) {
       if (onMessage) {
         try {

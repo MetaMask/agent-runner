@@ -52,6 +52,16 @@ const PI_OPTION_KEYS = new Set([
   'input',
   'cost',
 ]);
+const PI_STRUCTURED_INHERITED_KEYS: readonly (keyof PiQueryOptions)[] = [
+  'model',
+  'cwd',
+  'systemPrompt',
+  'contextWindow',
+  'maxTokens',
+  'reasoning',
+  'input',
+  'cost',
+];
 const MAX_DIRECT_EVENT_QUEUE = 10_000;
 
 /** Minimal structural contract used after the lazy Pi module import. */
@@ -124,9 +134,31 @@ export function createPiAdapter(): ProviderAdapter<PiQueryOptions, string> {
     name: 'pi',
     capabilities: { sandboxes: ['docker'] },
     getRunMetadata: getPiRunMetadata,
+    getStructuredDefaults: getPiStructuredDefaults,
     run: runPi,
     runStructured: runStructuredPi,
   };
+}
+
+/**
+ * Selects the runner defaults safe to inherit for a structured Pi run.
+ *
+ * @param defaults - Runner-level Pi default options.
+ * @returns Model and session metadata, excluding execution-policy fields.
+ */
+function getPiStructuredDefaults(
+  defaults: Partial<PiQueryOptions>,
+): Partial<PiQueryOptions> {
+  if (!isPlainRecord(defaults)) {
+    return {};
+  }
+  const inherited: Partial<PiQueryOptions> = {};
+  for (const key of PI_STRUCTURED_INHERITED_KEYS) {
+    if (defaults[key] !== undefined) {
+      Object.assign(inherited, { [key]: defaults[key] });
+    }
+  }
+  return inherited;
 }
 
 /**

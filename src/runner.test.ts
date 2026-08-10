@@ -566,6 +566,7 @@ describe('createAgentRunner', () => {
         judgeConfig,
         undefined,
         undefined,
+        {},
       );
     });
 
@@ -582,7 +583,51 @@ describe('createAgentRunner', () => {
         judgeConfig,
         context,
         undefined,
+        {},
       );
+    });
+
+    it('projects runner defaults through the adapter for structured runs', async () => {
+      const { adapter } = createMockAdapter();
+      const getStructuredDefaults = vi.fn(
+        (defaults: Record<string, unknown>) => {
+          const { maxTurns: _maxTurns, ...safe } = defaults;
+          return safe;
+        },
+      );
+      adapter.getStructuredDefaults = getStructuredDefaults;
+      const runner = createAgentRunner({
+        adapter,
+        defaultOptions: { model: 'default-model', maxTurns: 3 },
+      });
+
+      await runner.judge(judgeRunResult, judgeConfig);
+
+      expect(getStructuredDefaults).toHaveBeenCalledWith({
+        model: 'default-model',
+        maxTurns: 3,
+      });
+      expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        adapter,
+        judgeRunResult,
+        judgeConfig,
+        undefined,
+        undefined,
+        { model: 'default-model' },
+      );
+    });
+
+    it('projects an empty object when the runner has no defaults', async () => {
+      const { adapter } = createMockAdapter();
+      const getStructuredDefaults = vi.fn(
+        (defaults: Record<string, unknown>) => defaults,
+      );
+      adapter.getStructuredDefaults = getStructuredDefaults;
+      const runner = createAgentRunner({ adapter });
+
+      await runner.judge(judgeRunResult, judgeConfig);
+
+      expect(getStructuredDefaults).toHaveBeenCalledWith({});
     });
 
     it('does not post scores when postScores option is not set', async () => {

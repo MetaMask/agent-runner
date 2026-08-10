@@ -284,12 +284,16 @@ export function createAgentRunner<
       context?: JudgeContext,
       options?: JudgeOptions,
     ): Promise<JudgeResult> => {
+      const structuredDefaults = adapter.getStructuredDefaults
+        ? adapter.getStructuredDefaults(config.defaultOptions ?? {})
+        : {};
       const result = await executeJudge(
         adapter,
         runResult,
         judgeConfig,
         context,
         options?.onMessage,
+        structuredDefaults,
       );
 
       if (options?.postScores && telemetry.enabled && runResult.traceId) {

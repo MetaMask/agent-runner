@@ -1289,6 +1289,56 @@ describe('createPiAdapter', () => {
       model: 'unknown',
     });
   });
+
+  describe('getStructuredDefaults', () => {
+    it('inherits model and metadata for a structured run', () => {
+      expect(
+        createPiAdapter().getStructuredDefaults?.({
+          model: 'gpt-5.6-luna',
+          cwd: '/repo',
+          systemPrompt: 'be terse',
+          contextWindow: 200_000,
+          maxTokens: 4_096,
+          reasoning: true,
+          input: ['text', 'image'],
+          cost: { input: 1, output: 2 },
+        }),
+      ).toStrictEqual({
+        model: 'gpt-5.6-luna',
+        cwd: '/repo',
+        systemPrompt: 'be terse',
+        contextWindow: 200_000,
+        maxTokens: 4_096,
+        reasoning: true,
+        input: ['text', 'image'],
+        cost: { input: 1, output: 2 },
+      });
+    });
+
+    it('drops the tools execution-policy field', () => {
+      expect(
+        createPiAdapter().getStructuredDefaults?.({
+          model: 'gpt-5.6-luna',
+          tools: ['read', 'bash', 'edit', 'write'],
+        }),
+      ).toStrictEqual({ model: 'gpt-5.6-luna' });
+    });
+
+    it('omits absent keys rather than emitting undefined values', () => {
+      expect(
+        createPiAdapter().getStructuredDefaults?.({ model: 'gpt-5.6-luna' }),
+      ).toStrictEqual({ model: 'gpt-5.6-luna' });
+    });
+
+    it('returns an empty projection for empty or non-record defaults', () => {
+      expect(createPiAdapter().getStructuredDefaults?.({})).toStrictEqual({});
+      expect(
+        createPiAdapter().getStructuredDefaults?.(
+          undefined as unknown as Record<string, never>,
+        ),
+      ).toStrictEqual({});
+    });
+  });
 });
 
 /**

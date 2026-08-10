@@ -21,7 +21,9 @@ export type JudgeConfig<TOptions extends object = ClaudeQueryOptions> = {
   /** Score dimensions the judge should return. Used for validation and clamping. */
   scoreFields: JudgeScoreField[];
   /**
-   * Query options forwarded to the SDK call.
+   * Query options forwarded to the SDK call, merged over any runner defaults
+   * the adapter deems safe to inherit for a structured run (e.g. the Pi
+   * adapter inherits `model` from `defaultOptions` but never `tools`).
    *
    * Claude adapter defaults applied when not set: `tools` (`[]`),
    * `maxTurns` (`5`), and `settingSources` (`[]`).
