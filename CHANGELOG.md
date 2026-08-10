@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- Upgrade `@anthropic-ai/claude-agent-sdk` from `^0.2.136` to `^0.3.220`. No source changes are required: the adapter treats SDK messages as `Record<string, unknown>` behind safe accessors, and tool names (including the new `TaskCreate`/`TaskUpdate`/`TaskGet`/`TaskList` tools that replace the deprecated `TodoWrite`) pass through as opaque strings. The SDK's `0.3.143` move of `@anthropic-ai/sdk` and `@modelcontextprotocol/sdk` to peer dependencies does not affect this package, which imports no types from those packages.
-
 ### Added
 
 - Value-level telemetry redaction: `TelemetryConfig` now accepts an optional
@@ -20,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recursed with structure preserved, tool results, tool labels, and final
   output), runs regardless of the `redact` flag, defaults to a no-op, and is
   skipped for any value the blanket `redact` flag has already replaced.
+
+### Changed
+
+- Upgrade `@anthropic-ai/claude-agent-sdk` from `^0.2.136` to `^0.3.220`. No source changes are required: the adapter treats SDK messages as `Record<string, unknown>` behind safe accessors, and tool names (including the new `TaskCreate`/`TaskUpdate`/`TaskGet`/`TaskList` tools that replace the deprecated `TodoWrite`) pass through as opaque strings. The SDK's `0.3.143` move of `@anthropic-ai/sdk` and `@modelcontextprotocol/sdk` to peer dependencies does not affect this package, which imports no types from those packages.
 
 ## [0.2.0]
 
