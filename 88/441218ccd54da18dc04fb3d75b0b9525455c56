@@ -1,0 +1,35 @@
+CHANGELOG.md
+  s_2d08ecf9333b18::t_d9de8b2ee074d2 10-13
+src/telemetry/message-handler.ts
+  s_2d08ecf9333b18::t_3943160765f6e9 233-236
+  s_2d08ecf9333b18::t_afe0af222c4491 237-241,246
+src/telemetry/message-handler.test.ts
+  s_2d08ecf9333b18::t_7b4fb1732590c0 688,696-737
+  s_2d08ecf9333b18::t_af79b373b9c4fa 738
+vitest.config.mts
+  s_7f043dc1c4e2f2::t_b815f205571ec9 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "88441218ccd54da18dc04fb3d75b0b9525455c56",
+  "prompts": {},
+  "sessions": {
+    "s_2d08ecf9333b18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_012828e68ffewotRYvpo0BcJvH",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_7f043dc1c4e2f2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_012828e68ffewotRYvpo0BcJvH",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
