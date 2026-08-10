@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- fix: preserve the caller-provided Langfuse `sessionId` instead of overwriting it with the Claude Agent SDK's per-run session id, so all agent runs in a workflow correlate under one session (the SDK session id is retained in trace metadata as `agentSessionId`)
+
 ## [0.3.0]
 
 ### Added

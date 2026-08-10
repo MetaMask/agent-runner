@@ -685,9 +685,52 @@ describe('createMessageHandler', () => {
       expect.objectContaining({
         sessionId: 'session-1',
         userId: 'user-1',
-        metadata: { repo: 'metamask' },
+        metadata: { repo: 'metamask', agentSessionId: 'session-1' },
         tags: ['eval', 'ci'],
         version: '1.0.0',
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it('prefers the caller-provided session id over the SDK session id', () => {
+    const handler = createHandler({ initialSessionId: 'workflow-run-42' });
+
+    handler.handleMessage({ type: 'init', sessionId: 'sdk-session-9' });
+
+    expect(tracingMocks.traceSpan).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'workflow-run-42' }),
+      expect.any(Function),
+    );
+    expect(handler.getState().langfuseSessionId).toBe('workflow-run-42');
+  });
+
+  it('records the SDK session id as agentSessionId metadata', () => {
+    const handler = createHandler({
+      initialSessionId: 'workflow-run-42',
+      traceMetadata: { repo: 'metamask' },
+    });
+
+    handler.handleMessage({ type: 'init', sessionId: 'sdk-session-9' });
+
+    expect(tracingMocks.traceSpan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { repo: 'metamask', agentSessionId: 'sdk-session-9' },
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it('falls back to the SDK session id when no caller session id is set', () => {
+    const handler = createHandler({ initialSessionId: undefined });
+
+    handler.handleMessage({ type: 'init', sessionId: 'sdk-session-9' });
+
+    expect(handler.getState().langfuseSessionId).toBe('sdk-session-9');
+    expect(tracingMocks.traceSpan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'sdk-session-9',
+        metadata: { agentSessionId: 'sdk-session-9' },
       }),
       expect.any(Function),
     );
