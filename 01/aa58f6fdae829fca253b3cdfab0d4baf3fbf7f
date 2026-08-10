@@ -1,0 +1,60 @@
+src/adapters/pi-adapter.test.ts
+  s_75ce5c78e9982f::t_79bf827eb8697a 1292-1341
+src/judge/types.ts
+  s_75ce5c78e9982f::t_cf4ca2f4ac19a5 24-26
+vitest.config.mts
+  s_75ce5c78e9982f::t_4cf56a743012ef 20
+  s_75ce5c78e9982f::t_8dc2cd8da93e4b 23
+src/types.ts
+  s_75ce5c78e9982f::t_c2dbeadd6cc624 298-300,305
+  s_75ce5c78e9982f::t_672f9ae40d1398 297,301-304
+src/runner.ts
+  s_75ce5c78e9982f::t_9b15b06af6b2ab 287-289
+  s_75ce5c78e9982f::t_22b768911b36c9 296
+README.md
+  s_75ce5c78e9982f::t_76759a0e7a531c 116
+  s_75ce5c78e9982f::t_2db8a56a0c4b81 602
+src/runner.test.ts
+  s_75ce5c78e9982f::t_acc4a48d3c7e52 586
+  s_75ce5c78e9982f::t_06e35cb25301a7 590-619
+  s_75ce5c78e9982f::t_3e29eca38c7701 569
+  s_75ce5c78e9982f::t_78d168f2144f9b 620-632
+src/judge/executor.test.ts
+  s_75ce5c78e9982f::t_3ae0d013b123b9 1054-1061,1065-1067,1069-1070,1074-1075,1084-1086,1088-1089,1091-1096,1098-1103,1105-1111,1113-1118,1120-1121,1123-1129,1131-1133,1135-1136,1138-1141,1143-1144
+  s_75ce5c78e9982f::t_8d1c339d00754e 1062-1064,1068,1071-1073,1076,1081-1083,1087,1090
+  s_75ce5c78e9982f::t_6575c935e79ccf 1077-1079
+  s_75ce5c78e9982f::t_e7ccd5a04c0ee4 1080
+  s_75ce5c78e9982f::t_93e6b042e4033d 1097,1104,1112,1119,1122,1130,1134,1137,1142
+  s_75ce5c78e9982f::t_73a888f6783f93 5-10
+src/judge/executor.ts
+  s_75ce5c78e9982f::t_d0564ad7db623c 84-85,94
+  s_75ce5c78e9982f::t_91ffa851166181 114
+src/adapters/pi-adapter.ts
+  s_75ce5c78e9982f::t_f879665c40aeb1 137,143-161
+  s_75ce5c78e9982f::t_30a3774d9d78d1 55-64
+  s_f0954ccd189afa::t_ac07e0b7181410 162-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "01aa58f6fdae829fca253b3cdfab0d4baf3fbf7f",
+  "prompts": {},
+  "sessions": {
+    "s_75ce5c78e9982f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_014131496ffeFNivZqWerj6PLC",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_f0954ccd189afa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014131496ffeFNivZqWerj6PLC",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
