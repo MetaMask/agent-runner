@@ -22,19 +22,12 @@ import type {
   AgentRunResult,
   AgentRunner,
   AgentRunnerConfig,
+  ClaudeQueryInput,
   ClaudeQueryOptions,
   ProviderAdapter,
+  ProviderRunMetadata,
   RunConfig,
 } from './types.js';
-
-/**
- * Returns default query options with isolated settings.
- *
- * @returns Default query options.
- */
-function defaultQueryOptions(): Partial<ClaudeQueryOptions> {
-  return { settingSources: [] };
-}
 
 /**
  * Assembles an agent run result from collected messages and timing data.
@@ -79,14 +72,94 @@ function createResult(
 }
 
 /**
+ * Converts a provider prompt into best-effort telemetry text.
+ *
+ * @param prompt - Provider-specific prompt value.
+ * @returns A safe prompt representation for telemetry.
+ */
+function getTelemetryPrompt(prompt: unknown): string {
+  if (typeof prompt === 'string') {
+    return prompt;
+  }
+
+  try {
+    const serialized = JSON.stringify(prompt);
+    if (serialized !== undefined) {
+      return serialized;
+    }
+  } catch {
+    // Fall through to a guarded string conversion.
+  }
+
+  try {
+    return String(prompt);
+  } catch {
+    return '[unserializable prompt]';
+  }
+}
+
+/**
+ * Reads adapter-owned telemetry metadata without affecting agent execution.
+ *
+ * @param adapter - Active provider adapter.
+ * @param options - Merged provider-specific run options.
+ * @returns Provider metadata with neutral harness fallbacks.
+ */
+function getTelemetryRunMetadata<TOptions extends object, TPrompt>(
+  adapter: ProviderAdapter<TOptions, TPrompt>,
+  options: Partial<TOptions>,
+): Required<ProviderRunMetadata> {
+  try {
+    const metadata = adapter.getRunMetadata?.(options);
+    return {
+      model: metadata?.model ?? 'unknown',
+      maxTurns: metadata?.maxTurns ?? 0,
+    };
+  } catch {
+    return { model: 'unknown', maxTurns: 0 };
+  }
+}
+
+/**
  * Creates an agent runner with optional telemetry support.
  *
  * @param config - Runner configuration including telemetry and default options.
  * @returns The agent runner instance.
  */
-export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
+export function createAgentRunner<TOptions extends object, TPrompt>(
+  config: AgentRunnerConfig<TOptions, TPrompt> & {
+    /** Custom provider adapter defining the runner's option and prompt types. */
+    adapter: ProviderAdapter<TOptions, TPrompt>;
+  },
+): AgentRunner<TOptions, TPrompt>;
+/**
+ * Creates the default Claude agent runner.
+ *
+ * @param config - Claude runner configuration with an optional Claude adapter.
+ * @returns A runner typed to Claude query options and prompts.
+ */
+export function createAgentRunner(
+  config?: AgentRunnerConfig<ClaudeQueryOptions, ClaudeQueryInput['prompt']>,
+): AgentRunner<ClaudeQueryOptions, ClaudeQueryInput['prompt']>;
+/**
+ * Implements the public Claude and custom-provider overloads.
+ *
+ * @param config - Runner configuration.
+ * @returns The configured agent runner.
+ */
+export function createAgentRunner<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+>(
+  config: AgentRunnerConfig<TOptions, TPrompt> = {},
+): AgentRunner<TOptions, TPrompt> {
   const telemetry = createTelemetryController(config.telemetry);
-  const adapter: ProviderAdapter = config.adapter ?? createClaudeAdapter();
+  // Public overloads only permit an omitted adapter for the Claude option and
+  // prompt types. This cast unifies that default with the generic implementation.
+  const adapter = (config.adapter ?? createClaudeAdapter()) as ProviderAdapter<
+    TOptions,
+    TPrompt
+  >;
 
   return {
     enabled: telemetry.enabled,
@@ -98,33 +171,33 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
      * @param runOptions - Options for this agent run.
      * @returns The agent run result with collected messages and metadata.
      */
-    runAgent: async (runOptions: AgentRunOptions): Promise<AgentRunResult> => {
+    runAgent: async (
+      runOptions: AgentRunOptions<TOptions, TPrompt>,
+    ): Promise<AgentRunResult> => {
       const options = {
-        ...defaultQueryOptions(),
         ...config.defaultOptions,
         ...runOptions.options,
       };
       const messages: AgentMessage[] = [];
       const startedAtMs = Date.now();
-      const promptText =
-        typeof runOptions.prompt === 'string'
-          ? runOptions.prompt
-          : JSON.stringify(runOptions.prompt);
-      const handler = telemetry.enabled
-        ? createMessageHandler({
-            prompt: promptText,
-            model: (options.model as string) ?? 'unknown',
-            maxTurns: (options.maxTurns as number) ?? 0,
-            redact: telemetry.redact,
-            redactor: telemetry.redactor,
-            userId: runOptions.telemetry?.userId ?? 'unknown',
-            initialSessionId: runOptions.telemetry?.sessionId,
-            traceName: runOptions.telemetry?.traceName,
-            traceMetadata: runOptions.telemetry?.metadata,
-            traceTags: runOptions.telemetry?.tags,
-            traceVersion: runOptions.telemetry?.version,
-          })
-        : undefined;
+      let handler;
+      if (telemetry.enabled) {
+        const promptText = getTelemetryPrompt(runOptions.prompt);
+        const runMetadata = getTelemetryRunMetadata(adapter, options);
+        handler = createMessageHandler({
+          prompt: promptText,
+          model: runMetadata.model,
+          maxTurns: runMetadata.maxTurns,
+          redact: telemetry.redact,
+          redactor: telemetry.redactor,
+          userId: runOptions.telemetry?.userId ?? 'unknown',
+          initialSessionId: runOptions.telemetry?.sessionId,
+          traceName: runOptions.telemetry?.traceName,
+          traceMetadata: runOptions.telemetry?.metadata,
+          traceTags: runOptions.telemetry?.tags,
+          traceVersion: runOptions.telemetry?.version,
+        });
+      }
 
       let runError: Error | undefined;
 
@@ -143,7 +216,7 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
           }
         }
 
-        const runConfig: RunConfig =
+        const runConfig: RunConfig<TOptions, TPrompt> =
           sandbox === undefined
             ? { prompt: runOptions.prompt, options }
             : { prompt: runOptions.prompt, options, sandbox };
@@ -207,11 +280,12 @@ export function createAgentRunner(config: AgentRunnerConfig = {}): AgentRunner {
      */
     judge: async (
       runResult: AgentRunResult,
-      judgeConfig: JudgeConfig,
+      judgeConfig: JudgeConfig<TOptions>,
       context?: JudgeContext,
       options?: JudgeOptions,
     ): Promise<JudgeResult> => {
       const result = await executeJudge(
+        adapter,
         runResult,
         judgeConfig,
         context,

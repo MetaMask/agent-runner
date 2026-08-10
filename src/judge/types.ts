@@ -15,7 +15,7 @@ export type JudgeScoreField = {
 /**
  * Configuration for running an LLM-as-a-judge evaluation.
  */
-export type JudgeConfig = {
+export type JudgeConfig<TOptions extends object = ClaudeQueryOptions> = {
   /** System prompt / evaluation rubric for the judge. */
   rubric: string;
   /** Score dimensions the judge should return. Used for validation and clamping. */
@@ -23,10 +23,10 @@ export type JudgeConfig = {
   /**
    * Query options forwarded to the SDK call.
    *
-   * Defaults applied when not set: `model` (`claude-sonnet-4-20250514`),
-   * `tools` (`[]`), `maxTurns` (`5`), `settingSources` (`[]`).
+   * Claude adapter defaults applied when not set: `tools` (`[]`),
+   * `maxTurns` (`5`), and `settingSources` (`[]`).
    */
-  queryOptions?: Partial<ClaudeQueryOptions>;
+  queryOptions?: Partial<NoInfer<TOptions>>;
 };
 
 /**
@@ -62,8 +62,8 @@ export type JudgeOptions = {
    */
   postScores?: boolean;
   /**
-   * Callback invoked for each raw SDK message streamed during the judge
-   * agent run. Mirrors the `onMessage` callback on `AgentRunOptions`.
+   * Callback invoked for each normalized adapter message streamed during the
+   * judge run. Mirrors the `onMessage` callback on `AgentRunOptions`.
    * If the callback throws, the judge run terminates early with a
    * `JudgeError`.
    */

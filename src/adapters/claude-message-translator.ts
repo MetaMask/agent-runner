@@ -280,16 +280,57 @@ function translateToolUseSummaryMessage(
 function translateResultMessage(
   message: Record<string, unknown>,
 ): AgentMessage {
+  const structuredResult = stringifyStructuredOutput(message.structured_output);
+  const result = structuredResult ?? getOptionalString(message.result);
+  const success = message.subtype === 'success';
+  const error = success ? undefined : getResultError(message);
+
   return {
     type: 'result',
-    success: message.subtype === 'success',
-    ...spreadOptional('result', getOptionalString(message.result)),
+    success,
+    ...spreadOptional('result', result),
     ...spreadOptional('costUsd', getOptionalNumber(message.total_cost_usd)),
     ...spreadOptional('turns', getOptionalNumber(message.num_turns)),
     ...spreadOptional('durationMs', getOptionalNumber(message.duration_ms)),
-    ...spreadOptional('error', getOptionalString(message.error)),
+    ...spreadOptional('error', error),
     raw: message,
   };
+}
+
+/**
+ * Extracts actionable failure details from a Claude result message.
+ *
+ * @param message - The raw result message from the SDK.
+ * @returns Joined SDK errors, a legacy singular error, or the failure subtype.
+ */
+function getResultError(message: Record<string, unknown>): string | undefined {
+  const errors = getStringArray(message.errors)?.filter(
+    (error) => error.length > 0,
+  );
+  if (errors && errors.length > 0) {
+    return errors.join('; ');
+  }
+
+  return getOptionalString(message.error) ?? getOptionalString(message.subtype);
+}
+
+/**
+ * Serializes SDK structured output without allowing malformed provider data
+ * to break message normalization.
+ *
+ * @param value - Structured output from the SDK result message.
+ * @returns The JSON representation when serializable, otherwise undefined.
+ */
+function stringifyStructuredOutput(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return undefined;
+  }
 }
 
 /**

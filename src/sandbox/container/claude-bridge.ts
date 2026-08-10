@@ -174,7 +174,7 @@ export async function runClaudeBridge(deps: ClaudeBridgeDeps): Promise<number> {
  * @param cause - Value thrown by the SDK or request reader.
  * @returns A JSONL-ready event object.
  */
-function makeErrorEvent(cause: unknown): Record<string, unknown> {
+export function makeErrorEvent(cause: unknown): Record<string, unknown> {
   const error: Record<string, unknown> = {};
   if (cause instanceof Error) {
     error.name = cause.name || 'Error';
@@ -199,7 +199,7 @@ function makeErrorEvent(cause: unknown): Record<string, unknown> {
  * @param cause - Value thrown.
  * @returns Human-readable description.
  */
-function describeError(cause: unknown): string {
+export function describeError(cause: unknown): string {
   if (cause instanceof Error) {
     return cause.stack ?? `${cause.name}: ${cause.message}`;
   }
@@ -212,7 +212,9 @@ function describeError(cause: unknown): string {
  * @param value - Value to test.
  * @returns Whether `value` is a plain object.
  */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
   if (value === null || typeof value !== 'object') {
     return false;
   }
@@ -226,7 +228,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * @param value - Value to format.
  * @returns The formatted scalar.
  */
-function formatScalar(value: unknown): string {
+export function formatScalar(value: unknown): string {
   if (typeof value === 'string') {
     return JSON.stringify(value);
   }
@@ -259,7 +261,7 @@ function formatScalar(value: unknown): string {
  *
  * @returns `true` when invoked as `node claude-bridge.mjs`.
  */
-function isMain(): boolean {
+export function isMain(): boolean {
   if (!process.argv[1]) {
     return false;
   }
@@ -270,6 +272,33 @@ function isMain(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Runs the success continuation used by standalone execution.
+ *
+ * @param code - Successful process exit code.
+ * @returns Undefined after scheduling the safety exit.
+ */
+export function settleSuccessfulMain(code: number): undefined {
+  process.exitCode = code;
+  setTimeout(() => {
+    process.exit(code);
+  }, 1000).unref();
+  return undefined;
+}
+
+/**
+ * Runs the failure continuation used by standalone execution.
+ *
+ * @param cause - Fatal standalone failure.
+ */
+export function settleFailedMain(cause: unknown): void {
+  process.stderr.write(`[claude-bridge] fatal: ${describeError(cause)}\n`);
+  process.exitCode = 1;
+  setTimeout(() => {
+    process.exit(1);
+  }, 1000).unref();
 }
 
 if (isMain()) {
@@ -285,20 +314,12 @@ if (isMain()) {
       // timeout acts as a safety net: if the SDK or another module
       // holds open handles that would keep the process alive
       // indefinitely, we still terminate after a short grace period.
-      process.exitCode = code;
-      setTimeout(() => {
-        process.exit(code);
-      }, 1000).unref();
-      return undefined;
+      return settleSuccessfulMain(code);
     })
     .catch((cause: unknown) => {
       // Defensive: runClaudeBridge swallows its own errors, but if
       // something escapes (e.g. an unhandled write) we still want a
       // non-zero exit with a stderr breadcrumb.
-      process.stderr.write(`[claude-bridge] fatal: ${describeError(cause)}\n`);
-      process.exitCode = 1;
-      setTimeout(() => {
-        process.exit(1);
-      }, 1000).unref();
+      settleFailedMain(cause);
     });
 }

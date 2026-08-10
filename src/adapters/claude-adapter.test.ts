@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DockerSandboxConfig } from '../types.js';
+import type { AgentMessage, DockerSandboxConfig } from '../types.js';
 import { createClaudeAdapter } from './claude-adapter.js';
 
 const claudeMocks = vi.hoisted(() => ({
@@ -53,10 +53,12 @@ async function* yieldMessages(
  * @param messages - Raw SDK messages to feed to the mocked query.
  * @returns Translated agent messages.
  */
-async function collectMessages(messages: SdkMessage[]): Promise<unknown[]> {
+async function collectMessages(
+  messages: SdkMessage[],
+): Promise<AgentMessage[]> {
   claudeMocks.query.mockReturnValueOnce(yieldMessages(messages));
   const adapter = createClaudeAdapter();
-  const translated: unknown[] = [];
+  const translated: AgentMessage[] = [];
 
   for await (const message of adapter.run({
     prompt: 'hello',
@@ -89,8 +91,137 @@ describe('createClaudeAdapter', () => {
     expect(translated).toStrictEqual([]);
     expect(claudeMocks.query).toHaveBeenCalledWith({
       prompt: 'run this',
-      options: { maxTurns: 2 },
+      options: { maxTurns: 2, settingSources: [] },
     });
+  });
+
+  it('extracts Claude run metadata from provider options', () => {
+    const adapter = createClaudeAdapter();
+
+    expect(
+      adapter.getRunMetadata?.({ model: 'claude-opus', maxTurns: 7 }),
+    ).toStrictEqual({ model: 'claude-opus', maxTurns: 7 });
+    expect(adapter.getRunMetadata?.({ model: 'claude-opus' })).toStrictEqual({
+      model: 'claude-opus',
+      maxTurns: 0,
+    });
+    expect(adapter.getRunMetadata?.({ maxTurns: 7 })).toStrictEqual({
+      model: 'unknown',
+      maxTurns: 7,
+    });
+    expect(adapter.getRunMetadata?.({})).toStrictEqual({
+      model: 'unknown',
+      maxTurns: 0,
+    });
+  });
+
+  it('lets callers override the isolated settings default without mutating options', async () => {
+    claudeMocks.query.mockReturnValueOnce(yieldMessages([]));
+    const options = {
+      maxTurns: 2,
+      settingSources: ['user'] satisfies ('user' | 'project' | 'local')[],
+    };
+    const snapshot = structuredClone(options);
+
+    const adapter = createClaudeAdapter();
+    await collectAsyncIterable(adapter.run({ prompt: 'run this', options }));
+
+    expect(claudeMocks.query).toHaveBeenCalledWith({
+      prompt: 'run this',
+      options: { maxTurns: 2, settingSources: ['user'] },
+    });
+    expect(options).toStrictEqual(snapshot);
+  });
+
+  it('runs structured queries with overridable defaults and locked contract fields', async () => {
+    const structuredData = { score: 8 };
+    const raw = {
+      type: 'result',
+      subtype: 'success',
+      structured_output: structuredData,
+    };
+    claudeMocks.query.mockReturnValueOnce(yieldMessages([raw]));
+    const options = {
+      tools: ['Read'],
+      maxTurns: 9,
+      settingSources: ['project'] satisfies ('user' | 'project' | 'local')[],
+      systemPrompt: 'consumer system',
+      outputFormat: { type: 'json_schema' as const, schema: {} },
+      persistSession: true,
+    };
+    const snapshot = structuredClone(options);
+    const adapter = createClaudeAdapter();
+    const messages: unknown[] = [];
+
+    for await (const message of adapter.runStructured?.({
+      prompt: 'judge this',
+      systemPrompt: 'locked rubric',
+      schema: { type: 'object' },
+      options,
+    }) ?? []) {
+      messages.push(message);
+    }
+
+    expect(claudeMocks.query).toHaveBeenCalledWith({
+      prompt: 'judge this',
+      options: {
+        tools: ['Read'],
+        maxTurns: 9,
+        settingSources: ['project'],
+        systemPrompt: 'locked rubric',
+        outputFormat: {
+          type: 'json_schema',
+          schema: { type: 'object' },
+        },
+        persistSession: false,
+      },
+    });
+    expect(messages).toStrictEqual([
+      {
+        type: 'result',
+        success: true,
+        result: JSON.stringify(structuredData),
+        raw,
+      },
+    ]);
+    expect(options).toStrictEqual(snapshot);
+  });
+
+  it('normalizes all serializable structured output values without falling back', async () => {
+    const structuredValues = [{ score: 10 }, false, 0, ''];
+    const rawMessages = structuredValues.map((structuredOutput) => ({
+      type: 'result',
+      subtype: 'success',
+      result: 'fallback',
+      structured_output: structuredOutput,
+    }));
+
+    const messages = await collectMessages(rawMessages);
+
+    expect(
+      messages.map((message) =>
+        message.type === 'result' ? message.result : undefined,
+      ),
+    ).toStrictEqual(structuredValues.map((value) => JSON.stringify(value)));
+  });
+
+  it('falls back to the plain result when structured output cannot be serialized', async () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const rawMessages = [circular, 1n].map((structuredOutput) => ({
+      type: 'result',
+      subtype: 'success',
+      result: 'fallback',
+      structured_output: structuredOutput,
+    }));
+
+    const messages = await collectMessages(rawMessages);
+
+    expect(
+      messages.map((message) =>
+        message.type === 'result' ? message.result : undefined,
+      ),
+    ).toStrictEqual(['fallback', 'fallback']);
   });
 
   it('translates system init messages with optional model and tools', async () => {
@@ -326,18 +457,35 @@ describe('createClaudeAdapter', () => {
       type: 'result',
       subtype: 'success',
       result: 'done',
+      errors: ['must be ignored for successful results'],
       total_cost_usd: 0.5,
       num_turns: 3,
       duration_ms: 1000,
     };
-    const error = { type: 'result', subtype: 'error', error: 'failed' };
+    const error = {
+      type: 'result',
+      subtype: 'error_max_turns',
+      errors: ['first failure', '', 'second failure'],
+    };
+    const subtypeOnlyError = {
+      type: 'result',
+      subtype: 'error_during_execution',
+      errors: [],
+    };
     const rateLimit = {
       type: 'rate_limit_event',
       rate_limit_info: { status: 'allowed_warning' },
     };
 
     expect(
-      await collectMessages([progress, summary, success, error, rateLimit]),
+      await collectMessages([
+        progress,
+        summary,
+        success,
+        error,
+        subtypeOnlyError,
+        rateLimit,
+      ]),
     ).toStrictEqual([
       {
         type: 'tool_progress',
@@ -355,7 +503,18 @@ describe('createClaudeAdapter', () => {
         durationMs: 1000,
         raw: success,
       },
-      { type: 'result', success: false, error: 'failed', raw: error },
+      {
+        type: 'result',
+        success: false,
+        error: 'first failure; second failure',
+        raw: error,
+      },
+      {
+        type: 'result',
+        success: false,
+        error: 'error_during_execution',
+        raw: subtypeOnlyError,
+      },
       { type: 'rate_limit', status: 'allowed_warning', raw: rateLimit },
     ]);
   });
@@ -694,7 +853,7 @@ describe('createClaudeAdapter', () => {
       expect(translated).toStrictEqual([]);
       expect(claudeMocks.query).toHaveBeenCalledWith({
         prompt: 'plain run',
-        options: { maxTurns: 1 },
+        options: { maxTurns: 1, settingSources: [] },
       });
       expect(sandboxMocks.createDockerSandbox).not.toHaveBeenCalled();
       expect(sandboxMocks.runDockerClaudeBridge).not.toHaveBeenCalled();
@@ -748,7 +907,7 @@ describe('createClaudeAdapter', () => {
       expect(bridgeInput.commandRunner).toBe(fakeRunner);
       expect(bridgeInput.request).toStrictEqual({
         prompt: 'sandboxed',
-        options: {},
+        options: { settingSources: [] },
       });
 
       expect(handle.close).toHaveBeenCalledTimes(1);
@@ -774,7 +933,7 @@ describe('createClaudeAdapter', () => {
       // container equivalent by `prepareDockerSandboxRequest`.
       expect(
         (bridgeInput.request as Record<string, unknown>).options,
-      ).toStrictEqual({ cwd: '/workspace/sub' });
+      ).toStrictEqual({ cwd: '/workspace/sub', settingSources: [] });
     });
 
     it('does not mutate caller options or sandbox config', async () => {
@@ -1020,3 +1179,18 @@ describe('createClaudeAdapter', () => {
     });
   });
 });
+
+/**
+ * Drains an async iterable without retaining its values.
+ *
+ * @param iterable - Iterable to consume.
+ */
+async function collectAsyncIterable(
+  iterable: AsyncIterable<unknown>,
+): Promise<void> {
+  const iterator = iterable[Symbol.asyncIterator]();
+  let result = await iterator.next();
+  while (!result.done) {
+    result = await iterator.next();
+  }
+}

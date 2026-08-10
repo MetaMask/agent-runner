@@ -21,6 +21,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { bootstrapDockerBridge, PI_BRIDGE_RUNTIME } from './bridge.js';
+import { createDefaultDockerCommandRunner } from './command-runner.js';
 import { createDockerSandbox } from './lifecycle.js';
 import type { NormalizedDockerSandboxConfig } from './options.js';
 
@@ -118,6 +120,35 @@ describe.skipIf(!runDockerTests)('docker sandbox integration', () => {
     // container no longer exists.
     expect(await handle.close()).toBeUndefined();
   });
+
+  it(
+    'installs and loads the credential-free Pi bridge runtime',
+    { timeout: 180_000 },
+    async () => {
+      const handle = await createDockerSandbox(
+        makeConfig({ image: 'docker/sandbox-templates:shell' }),
+      );
+      const commandRunner = createDefaultDockerCommandRunner();
+      try {
+        const prepared = await bootstrapDockerBridge({
+          runtime: PI_BRIDGE_RUNTIME,
+          sandbox: handle,
+          config: makeConfig({ image: 'docker/sandbox-templates:shell' }),
+          commandRunner,
+        });
+        const loaded = await commandRunner.run('docker', [
+          'exec',
+          handle.containerName,
+          prepared.nodeCommand,
+          '-e',
+          "import('@earendil-works/pi-coding-agent').then(()=>process.stdout.write('ok'))",
+        ]);
+        expect(loaded.stdout).toBe('ok');
+      } finally {
+        await handle.close();
+      }
+    },
+  );
 });
 
 // Sanity check so the file is never completely empty when the suite

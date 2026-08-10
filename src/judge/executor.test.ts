@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createClaudeAdapter } from '../adapters/claude-adapter.js';
 import { JudgeError } from '../errors.js';
 import type { AgentRunResult } from '../types.js';
 import { executeJudge } from './executor.js';
@@ -114,6 +115,8 @@ const baseConfig: JudgeConfig = {
   ],
 };
 
+const adapter = createClaudeAdapter();
+
 describe('executeJudge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,9 +126,9 @@ describe('executeJudge', () => {
     it('throws when scoreFields is empty', async () => {
       const config: JudgeConfig = { rubric: 'Evaluate.', scoreFields: [] };
 
-      await expect(executeJudge(minimalRunResult, config)).rejects.toThrow(
-        'scoreFields must not be empty',
-      );
+      await expect(
+        executeJudge(adapter, minimalRunResult, config),
+      ).rejects.toThrow('scoreFields must not be empty');
     });
 
     it('throws when a scoreField name is reserved', async () => {
@@ -134,7 +137,9 @@ describe('executeJudge', () => {
         scoreFields: [{ name: 'reasoning', min: 0, max: 10 }],
       };
 
-      await expect(executeJudge(minimalRunResult, config)).rejects.toThrow(
+      await expect(
+        executeJudge(adapter, minimalRunResult, config),
+      ).rejects.toThrow(
         "scoreField name 'reasoning' is reserved by the output schema",
       );
     });
@@ -148,9 +153,9 @@ describe('executeJudge', () => {
         ],
       };
 
-      await expect(executeJudge(minimalRunResult, config)).rejects.toThrow(
-        "duplicate scoreField name 'quality'",
-      );
+      await expect(
+        executeJudge(adapter, minimalRunResult, config),
+      ).rejects.toThrow("duplicate scoreField name 'quality'");
     });
 
     it('throws when min or max is non-finite', async () => {
@@ -159,9 +164,9 @@ describe('executeJudge', () => {
         scoreFields: [{ name: 'quality', min: 0, max: Infinity }],
       };
 
-      await expect(executeJudge(minimalRunResult, config)).rejects.toThrow(
-        "scoreField 'quality' has non-finite min/max",
-      );
+      await expect(
+        executeJudge(adapter, minimalRunResult, config),
+      ).rejects.toThrow("scoreField 'quality' has non-finite min/max");
     });
 
     it('throws when min exceeds max', async () => {
@@ -170,9 +175,9 @@ describe('executeJudge', () => {
         scoreFields: [{ name: 'quality', min: 10, max: 5 }],
       };
 
-      await expect(executeJudge(minimalRunResult, config)).rejects.toThrow(
-        "scoreField 'quality' has min (10) > max (5)",
-      );
+      await expect(
+        executeJudge(adapter, minimalRunResult, config),
+      ).rejects.toThrow("scoreField 'quality' has min (10) > max (5)");
     });
   });
 
@@ -188,7 +193,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await executeJudge(richRunResult, baseConfig);
+    await executeJudge(adapter, richRunResult, baseConfig);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -209,6 +214,47 @@ describe('executeJudge', () => {
     expect(prompt).toContain('rate_limited');
     expect(prompt).toContain('success:');
     expect(prompt).toContain('error: timeout');
+  });
+
+  it('scrubs forwarded credentials from the judge transcript', async () => {
+    vi.stubEnv('LITELLM_API_KEY', 'sk-litellm-super-secret-value');
+    const runResult: AgentRunResult = {
+      ...minimalRunResult,
+      messages: [
+        { type: 'init', sessionId: 'sess-1', model: 'mock-model', tools: [] },
+        {
+          type: 'tool_result',
+          toolUseId: 'tc-1',
+          content: 'LITELLM_API_KEY=sk-litellm-super-secret-value',
+          isError: false,
+        },
+        { type: 'result', success: true, costUsd: 0.01 },
+      ],
+    };
+    claudeMocks.query.mockReturnValueOnce(
+      yieldMessages([
+        {
+          type: 'result',
+          subtype: 'success',
+          result: JSON.stringify({
+            quality: 7,
+            accuracy: 4,
+            reasoning: 'ok',
+          }),
+        },
+      ]),
+    );
+
+    await executeJudge(adapter, runResult, baseConfig);
+
+    const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    const prompt = callArgs.prompt as string;
+    expect(prompt).not.toContain('sk-litellm-super-secret-value');
+    expect(prompt).toContain('LITELLM_API_KEY=[REDACTED_CREDENTIAL]');
+    vi.unstubAllEnvs();
   });
 
   it('uses an empty summary for unknown message types defensively', async () => {
@@ -232,7 +278,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await executeJudge(runResult, baseConfig);
+    await executeJudge(adapter, runResult, baseConfig);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -254,7 +300,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await executeJudge(minimalRunResult, baseConfig);
+    await executeJudge(adapter, minimalRunResult, baseConfig);
 
     expect(claudeMocks.query).toHaveBeenCalledOnce();
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
@@ -317,7 +363,7 @@ describe('executeJudge', () => {
       },
     };
 
-    await executeJudge(minimalRunResult, customConfig);
+    await executeJudge(adapter, minimalRunResult, customConfig);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -349,7 +395,7 @@ describe('executeJudge', () => {
       status: 'success',
     };
 
-    await executeJudge(minimalRunResult, baseConfig, context);
+    await executeJudge(adapter, minimalRunResult, baseConfig, context);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -375,7 +421,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const result = await executeJudge(minimalRunResult, baseConfig);
+    const result = await executeJudge(adapter, minimalRunResult, baseConfig);
 
     expect(result.scores).toStrictEqual({ quality: 9, accuracy: 4 });
     expect(result.reasoning).toBe('Excellent transcript quality.');
@@ -394,7 +440,9 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await expect(executeJudge(minimalRunResult, baseConfig)).rejects.toThrow(
+    await expect(
+      executeJudge(adapter, minimalRunResult, baseConfig),
+    ).rejects.toThrow(
       "Judge score 'quality' value 15 is outside allowed range [0, 10]",
     );
   });
@@ -411,7 +459,9 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await expect(executeJudge(minimalRunResult, baseConfig)).rejects.toThrow(
+    await expect(
+      executeJudge(adapter, minimalRunResult, baseConfig),
+    ).rejects.toThrow(
       "Judge score 'accuracy' value -2 is outside allowed range [0, 5]",
     );
   });
@@ -419,25 +469,47 @@ describe('executeJudge', () => {
   it('throws JudgeError for non-success result subtypes', async () => {
     claudeMocks.query.mockReturnValueOnce(
       yieldMessages([
-        { type: 'result', subtype: 'error_max_turns', result: undefined },
+        { type: 'result', subtype: 'error_max_turns', errors: [] },
       ]),
     );
 
-    const error = await executeJudge(minimalRunResult, baseConfig).catch(
-      (thrown: unknown) => thrown,
-    );
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(JudgeError);
     expect((error as Error).message).toBe(
-      'Judge agent terminated with status: error_max_turns',
+      'Judge agent terminated unsuccessfully: error_max_turns',
+    );
+  });
+
+  it('includes a normalized provider error for unsuccessful results', async () => {
+    claudeMocks.query.mockReturnValueOnce(
+      yieldMessages([
+        {
+          type: 'result',
+          subtype: 'error_max_turns',
+          errors: ['maximum turns reached', 'increase the judge turn limit'],
+        },
+      ]),
+    );
+
+    await expect(
+      executeJudge(adapter, minimalRunResult, baseConfig),
+    ).rejects.toThrow(
+      'Judge agent terminated unsuccessfully: maximum turns reached; increase the judge turn limit',
     );
   });
 
   it('throws JudgeError when query() produces no result message', async () => {
     claudeMocks.query.mockReturnValueOnce(yieldMessages([]));
 
-    const error = await executeJudge(minimalRunResult, baseConfig).catch(
-      (thrown: unknown) => thrown,
-    );
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(JudgeError);
     expect((error as Error).message).toBe('Judge agent produced no result');
   });
@@ -449,9 +521,11 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const error = await executeJudge(minimalRunResult, baseConfig).catch(
-      (thrown: unknown) => thrown,
-    );
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(JudgeError);
     expect((error as Error).message).toBe(
       'Failed to parse judge response as JSON',
@@ -469,9 +543,11 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const error = await executeJudge(minimalRunResult, baseConfig).catch(
-      (thrown: unknown) => thrown,
-    );
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(JudgeError);
     expect((error as Error).message).toBe(
       "Judge response missing numeric field 'accuracy'",
@@ -495,11 +571,50 @@ describe('executeJudge', () => {
       },
     }));
 
-    const error = await executeJudge(minimalRunResult, baseConfig).catch(
-      (thrown: unknown) => thrown,
-    );
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(JudgeError);
     expect((error as Error).message).toBe('Judge agent execution failed');
+  });
+
+  it('wraps non-Error adapter failures', async () => {
+    const failingAdapter = {
+      ...adapter,
+      /**
+       * Returns a structured stream that rejects with a non-Error value.
+       *
+       * @returns The failing async iterable.
+       */
+      runStructured(): AsyncIterable<never> {
+        return {
+          /**
+           * Returns the failing iterator.
+           *
+           * @returns The async iterator.
+           */
+          [Symbol.asyncIterator](): AsyncIterator<never> {
+            return {
+              /** Rejects with the provider failure value. */
+              next: vi.fn().mockRejectedValue('provider failure'),
+            };
+          },
+        };
+      },
+    };
+
+    const error = await executeJudge(
+      failingAdapter,
+      minimalRunResult,
+      baseConfig,
+    ).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(JudgeError);
+    expect((error as JudgeError).cause).toStrictEqual(
+      new Error('provider failure'),
+    );
   });
 
   it('treats non-string result as missing when no structured_output', async () => {
@@ -507,9 +622,9 @@ describe('executeJudge', () => {
       yieldMessages([{ type: 'result', subtype: 'success', result: 42 }]),
     );
 
-    await expect(executeJudge(minimalRunResult, baseConfig)).rejects.toThrow(
-      'Judge agent produced no result',
-    );
+    await expect(
+      executeJudge(adapter, minimalRunResult, baseConfig),
+    ).rejects.toThrow('Judge agent produced no result');
   });
 
   it('reads structured_output when result string is absent', async () => {
@@ -528,7 +643,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const result = await executeJudge(minimalRunResult, baseConfig);
+    const result = await executeJudge(adapter, minimalRunResult, baseConfig);
 
     expect(result.scores).toStrictEqual({ quality: 8, accuracy: 4 });
     expect(result.reasoning).toBe('Via structured output.');
@@ -555,7 +670,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const result = await executeJudge(minimalRunResult, baseConfig);
+    const result = await executeJudge(adapter, minimalRunResult, baseConfig);
 
     expect(result.scores).toStrictEqual({ quality: 9, accuracy: 5 });
     expect(result.reasoning).toBe('From structured.');
@@ -578,10 +693,20 @@ describe('executeJudge', () => {
     );
 
     const onMessage = vi.fn();
-    await executeJudge(minimalRunResult, baseConfig, undefined, onMessage);
+    await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+      undefined,
+      onMessage,
+    );
 
     expect(onMessage).toHaveBeenCalledTimes(2);
-    expect(onMessage).toHaveBeenNthCalledWith(1, systemMsg);
+    expect(onMessage).toHaveBeenNthCalledWith(1, {
+      type: 'init',
+      sessionId: '',
+      raw: systemMsg,
+    });
     expect(onMessage).toHaveBeenNthCalledWith(2, {
       type: 'result',
       success: true,
@@ -607,7 +732,13 @@ describe('executeJudge', () => {
     claudeMocks.query.mockReturnValueOnce(yieldMessages([resultMsg]));
 
     const onMessage = vi.fn();
-    await executeJudge(minimalRunResult, baseConfig, undefined, onMessage);
+    await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+      undefined,
+      onMessage,
+    );
 
     expect(onMessage).toHaveBeenCalledWith({
       type: 'result',
@@ -636,7 +767,13 @@ describe('executeJudge', () => {
     claudeMocks.query.mockReturnValueOnce(yieldMessages([resultMsg]));
 
     const onMessage = vi.fn();
-    await executeJudge(minimalRunResult, baseConfig, undefined, onMessage);
+    await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+      undefined,
+      onMessage,
+    );
 
     expect(onMessage).toHaveBeenCalledWith({
       type: 'result',
@@ -648,17 +785,18 @@ describe('executeJudge', () => {
     });
   });
 
-  it('translates error result with error field for onMessage', async () => {
+  it('translates real Claude result errors for onMessage', async () => {
     const resultMsg = {
       type: 'result',
       subtype: 'error_max_turns',
-      error: 'max turns reached',
+      errors: ['max turns reached'],
       num_turns: 1,
     };
     claudeMocks.query.mockReturnValueOnce(yieldMessages([resultMsg]));
 
     const onMessage = vi.fn();
     await executeJudge(
+      adapter,
       minimalRunResult,
       baseConfig,
       undefined,
@@ -693,6 +831,7 @@ describe('executeJudge', () => {
     const onMessage = vi.fn().mockRejectedValueOnce(new Error('handler boom'));
 
     const error = await executeJudge(
+      adapter,
       minimalRunResult,
       baseConfig,
       undefined,
@@ -703,6 +842,58 @@ describe('executeJudge', () => {
     expect((error as Error).message).toBe('Judge onMessage callback failed');
     expect((error as JudgeError).cause).toBeInstanceOf(Error);
     expect(((error as JudgeError).cause as Error).message).toBe('handler boom');
+  });
+
+  it('wraps a non-Error onMessage callback failure in JudgeError', async () => {
+    claudeMocks.query.mockReturnValueOnce(
+      yieldMessages([{ type: 'system', subtype: 'init' }]),
+    );
+    const onMessage = vi.fn().mockRejectedValueOnce('handler string failure');
+
+    const error = await executeJudge(
+      adapter,
+      minimalRunResult,
+      baseConfig,
+      undefined,
+      onMessage,
+    ).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(JudgeError);
+    expect((error as JudgeError).cause).toStrictEqual(
+      new Error('handler string failure'),
+    );
+  });
+
+  it('throws an actionable JudgeError when the adapter lacks structured output', async () => {
+    const unsupportedAdapter = {
+      name: 'custom-provider',
+      /**
+       * Returns an empty run stream.
+       *
+       * @returns The empty async iterable.
+       */
+      run(): AsyncIterable<never> {
+        return {
+          /**
+           * Returns the empty iterator.
+           *
+           * @returns The async iterator.
+           */
+          [Symbol.asyncIterator](): AsyncIterator<never> {
+            return {
+              /** Returns the completed iteration result. */
+              next: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+            };
+          },
+        };
+      },
+    };
+
+    await expect(
+      executeJudge(unsupportedAdapter, minimalRunResult, baseConfig),
+    ).rejects.toThrow(
+      "Provider adapter `custom-provider` does not support structured-output judging. Implement the adapter's runStructured capability to use judge().",
+    );
   });
 
   it('returns empty reasoning when reasoning field is not a string', async () => {
@@ -717,7 +908,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    const result = await executeJudge(minimalRunResult, baseConfig);
+    const result = await executeJudge(adapter, minimalRunResult, baseConfig);
 
     expect(result.reasoning).toBe('');
   });
@@ -757,7 +948,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await executeJudge(xssRunResult, baseConfig);
+    await executeJudge(adapter, xssRunResult, baseConfig);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -813,7 +1004,7 @@ describe('executeJudge', () => {
       ]),
     );
 
-    await executeJudge(sensitiveRunResult, baseConfig);
+    await executeJudge(adapter, sensitiveRunResult, baseConfig);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,
@@ -843,7 +1034,7 @@ describe('executeJudge', () => {
       status: 'failed & retried',
     };
 
-    await executeJudge(minimalRunResult, baseConfig, context);
+    await executeJudge(adapter, minimalRunResult, baseConfig, context);
 
     const callArgs = claudeMocks.query.mock.calls[0]?.[0] as Record<
       string,

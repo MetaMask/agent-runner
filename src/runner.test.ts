@@ -90,7 +90,7 @@ const createMockAdapter = (
 };
 
 describe('createAgentRunner', () => {
-  it('defaults to isolated settingSources', async () => {
+  it('does not inject provider-specific defaults', async () => {
     const { adapter, runCalls } = createMockAdapter();
     const runner = createAgentRunner({ adapter });
 
@@ -99,7 +99,7 @@ describe('createAgentRunner', () => {
     expect(runCalls).toStrictEqual([
       {
         prompt: 'test prompt',
-        options: { settingSources: [] },
+        options: {},
       },
     ]);
   });
@@ -139,7 +139,7 @@ describe('createAgentRunner', () => {
     expect(runCalls).toStrictEqual([
       {
         prompt,
-        options: { settingSources: [] },
+        options: {},
       },
     ]);
   });
@@ -561,6 +561,7 @@ describe('createAgentRunner', () => {
 
       expect(result).toStrictEqual(judgeResult);
       expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        adapter,
         judgeRunResult,
         judgeConfig,
         undefined,
@@ -576,6 +577,7 @@ describe('createAgentRunner', () => {
       await runner.judge(judgeRunResult, judgeConfig, context);
 
       expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        adapter,
         judgeRunResult,
         judgeConfig,
         context,

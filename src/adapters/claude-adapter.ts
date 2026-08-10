@@ -7,11 +7,14 @@ import {
   normalizeDockerSandboxConfig,
   prepareDockerSandboxRequest,
 } from '../sandbox/docker/options.js';
+import { CLAUDE_DOCKER_SANDBOX_FORWARD_ENV } from '../sandbox/types.js';
 import type {
   AgentMessage,
   DockerSandboxConfig,
   ProviderAdapter,
+  ProviderRunMetadata,
   RunConfig,
+  RunStructuredConfig,
   SandboxConfig,
 } from '../types.js';
 import { translateClaudeSdkMessages } from './claude-message-translator.js';
@@ -37,6 +40,18 @@ export function createClaudeAdapter(): ProviderAdapter {
     name: 'claude',
     capabilities: { sandboxes: ['docker'] },
     /**
+     * Extracts telemetry metadata from Claude query options.
+     *
+     * @param options - Claude query options for the run.
+     * @returns Provider-owned telemetry metadata.
+     */
+    getRunMetadata(options): ProviderRunMetadata {
+      return {
+        model: options.model ?? 'unknown',
+        maxTurns: options.maxTurns ?? 0,
+      };
+    },
+    /**
      * Runs the Claude query and yields translated agent messages.
      *
      * Delegates raw-to-normalized message translation (including
@@ -47,17 +62,42 @@ export function createClaudeAdapter(): ProviderAdapter {
      * @yields Translated agent messages from the SDK response stream.
      */
     async *run(config: RunConfig): AsyncGenerator<AgentMessage> {
+      const options = { settingSources: [], ...config.options };
       if (config.sandbox === undefined) {
         const rawMessages = query({
           prompt: config.prompt,
-          options: config.options,
+          options,
         });
 
         yield* translateClaudeSdkMessages(rawMessages);
         return;
       }
 
-      yield* runWithSandbox(config, config.sandbox);
+      yield* runWithSandbox({ ...config, options }, config.sandbox);
+    },
+    /**
+     * Runs a Claude query with a locked JSON-schema output contract.
+     *
+     * @param config - Structured run configuration.
+     * @yields Translated agent messages from the SDK response stream.
+     */
+    async *runStructured(
+      config: RunStructuredConfig,
+    ): AsyncGenerator<AgentMessage> {
+      const rawMessages = query({
+        prompt: config.prompt,
+        options: {
+          tools: [],
+          maxTurns: 5,
+          settingSources: [],
+          ...config.options,
+          systemPrompt: config.systemPrompt,
+          outputFormat: { type: 'json_schema', schema: config.schema },
+          persistSession: false,
+        },
+      });
+
+      yield* translateClaudeSdkMessages(rawMessages);
     },
   };
 }
@@ -87,7 +127,10 @@ async function* runWithSandbox(
   const hostCwd =
     typeof config.options.cwd === 'string' ? config.options.cwd : process.cwd();
 
-  const normalized = normalizeDockerSandboxConfig(dockerSandbox, { hostCwd });
+  const normalized = normalizeDockerSandboxConfig(dockerSandbox, {
+    hostCwd,
+    defaultForwardEnv: CLAUDE_DOCKER_SANDBOX_FORWARD_ENV,
+  });
   const prepared = prepareDockerSandboxRequest({
     prompt: config.prompt,
     options: config.options,

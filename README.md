@@ -1,8 +1,8 @@
 # @metamask/agent-runner
 
-Reusable TypeScript runner for `@anthropic-ai/claude-agent-sdk` with optional Langfuse/OpenTelemetry lifecycle support.
+Reusable TypeScript runner for the Claude Agent SDK and Pi coding-agent harness with optional Langfuse/OpenTelemetry lifecycle support and Docker isolation.
 
-This package wraps the Claude Agent SDK `query()` behind a provider adapter, normalizes the streamed message types into a discriminated union, collects result metadata, and exposes `flush()` / `shutdown()` so short-lived CI and eval processes do not lose telemetry spans.
+This package provides runtime-selectable Claude and Pi adapters, normalizes both event streams into one discriminated union, collects result metadata, and exposes `flush()` / `shutdown()` so short-lived CI and eval processes do not lose telemetry spans. Node.js **22.19.0 or newer** is required (Node 24+ is also supported).
 
 ## Install
 
@@ -23,6 +23,15 @@ LANGFUSE_BASE_URL=https://cloud.langfuse.com
 ```
 
 `ANTHROPIC_API_KEY` is not validated at runner construction time. The Claude Agent SDK remains responsible for auth and execution errors.
+
+The Pi harness routes through a LiteLLM-compatible OpenAI completions endpoint and requires environment-only credentials:
+
+```bash
+LITELLM_BASE_URL=https://litellm.example
+LITELLM_API_KEY=sk-litellm-...
+```
+
+Credentials are never serialized into Pi options or bridge requests. Docker forwards only the active adapter's default environment list: Claude receives its `ANTHROPIC_*`/proxy keys, while Pi receives `LITELLM_BASE_URL`, `LITELLM_API_KEY`, and proxy keys. An explicit `forwardEnv` list or `false` still overrides those defaults.
 
 ### Using with LiteLLM Proxy
 
@@ -79,6 +88,41 @@ const result = await runner.runAgent({
 console.log(result.sessionId, result.totalCostUsd, result.durationMs);
 ```
 
+### Runtime harness selection
+
+Claude remains the default. Select Pi explicitly with the synchronous adapter factory or literal selector:
+
+```ts
+import {
+  createAgentRunner,
+  createHarnessAdapter,
+  createPiAdapter,
+} from '@metamask/agent-runner';
+
+const piRunner = createAgentRunner({
+  adapter: createPiAdapter(), // equivalent: createHarnessAdapter('pi')
+  defaultOptions: {
+    model: 'gpt-5.6-luna',
+    cwd: process.cwd(),
+    tools: ['read', 'bash', 'edit', 'write'],
+  },
+});
+
+await piRunner.runAgent({ prompt: 'Run the focused tests and fix failures.' });
+```
+
+`PiQueryOptions` is package-owned and supports `model`, `cwd`, `systemPrompt`, an exact built-in `tools` allowlist, and safe provider model metadata (`contextWindow`, `maxTokens`, `reasoning`, `input`, and optional `cost`). Supported tool names are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`; the Phase 3 default is `read`/`bash`/`edit`/`write`, and `tools: []` disables all built-ins.
+
+Pi deliberately rejects Claude policy fields (`allowedTools`, `disallowedTools`, `canUseTool`, `permissionMode`, and `dangerouslySkipPermissions`), unknown tool names, and command-scoped selectors such as `bash(rm:*)`. These policies cannot be represented faithfully by Pi, so the adapter fails closed rather than silently weakening them. Structured judge runs also reject caller tool customization and expose only the terminating `submit_judgment` tool.
+
+> **Direct Pi tool warning:** Direct runs execute enabled Pi tools on the host with the permissions of the current process. Use Docker for untrusted prompts or tool workloads. Docker does not make credentials invisible to a model running in the container; forward only the keys the run needs.
+
+When Docker cleanup is `on-success` or `never`, failed or retained containers
+may continue to contain forwarded credentials in their environment. Remove
+retained containers promptly and avoid these policies for sensitive keys.
+
+Pi usage cost is derived from declared model pricing and finalized assistant events. LiteLLM commonly supplies no trustworthy pricing; zero is preserved as `0`, while entirely missing or malformed cost data remains `undefined`.
+
 By default the runner passes `settingSources: []` to the Claude SDK for isolated settings. Callers can override that in `defaultOptions` or per-run `options` when they intentionally want SDK settings loaded from other sources.
 
 ## Telemetry usage
@@ -125,6 +169,9 @@ src/
   formatter.ts          Human-readable message formatting
   adapters/
     claude-adapter.ts   Claude SDK provider adapter
+    pi-adapter.ts       Lazy Pi SDK provider adapter and isolated lifecycle
+    pi-types.ts         Package-owned Pi options and JSON-safe event DTOs
+    pi-message-translator.ts Shared direct/Docker Pi event translation
     sdk-accessors.ts    Type-safe accessors for raw SDK message fields
   telemetry/
     index.ts            Barrel re-exports for telemetry module
@@ -149,6 +196,7 @@ src/
       bridge-protocol.ts JSON frame schema and parser for the bridge
     container/
       claude-bridge.ts  In-container Node.js bridge that drives the SDK
+      pi-bridge.ts      Self-contained in-container isolated Pi bridge
 ```
 
 ### Provider adapter pattern
@@ -277,7 +325,7 @@ The run loop catches all errors and returns them in the result rather than throw
 
 ## Docker sandbox
 
-The Claude adapter can execute agent runs inside a Docker container instead of
+The Claude and Pi adapters can execute agent runs inside a Docker container instead of
 the host process. This isolates filesystem writes, environment variables, and
 spawned subprocesses (including the Claude Agent SDK's own tools) from the
 host. The sandbox is opt-in: when no `sandbox` is configured the adapter runs
@@ -318,9 +366,8 @@ const result = await runner.runAgent({
    workspace mount, extra bind mounts, env vars, network mode, user
    override, and `--shm-size`. Any `setupCommands` run inside the
    container via `docker exec` after it starts.
-3. A small Node.js bridge (`src/sandbox/container/claude-bridge.mjs`) is
-   copied into the container and the configured `@anthropic-ai/claude-agent-sdk`
-   version is `npm install`ed alongside it. The host streams a JSON
+3. A runtime-specific Node.js bridge (`claude-bridge.mjs` or `pi-bridge.mjs`) is
+   copied into the container and the descriptor-pinned SDK package is `npm install`ed alongside it. Pi is locked to `@earendil-works/pi-coding-agent@0.83.0` and preflights Node >=22.19.0. The host streams a JSON
    request to the bridge over stdin and reads newline-delimited JSON
    events back over stdout.
 4. The adapter translates those events into the same `AgentMessage`
@@ -462,8 +509,8 @@ createAgentRunner({
 - The `docker` CLI must be on `PATH` and the user must be able to create
   containers. Rootless Docker, Podman with a `docker` shim, and remote
   daemons via `DOCKER_HOST` all work as long as the CLI obeys.
-- The container image must include a Node.js runtime compatible with the
-  Claude Agent SDK (Node 20+). The bridge installs the SDK via `npm`, so
+- The container image must include Node.js 22.19.0+ for Pi (and a compatible
+  runtime for Claude). The bridge installs the SDK via `npm`, so
   `npm` must also be available (override with `bridge.nodeCommand` /
   `bridge.npmCommand` if you ship a custom binary).
 - The bridge runs `npm install` on every fresh container by default. For
@@ -495,24 +542,24 @@ Creates a runner with:
 
 #### `AgentRunnerConfig`
 
-| Field            | Type                          | Description                                                        |
-| ---------------- | ----------------------------- | ------------------------------------------------------------------ |
-| `defaultOptions` | `Partial<ClaudeQueryOptions>` | Default query options applied to every run.                        |
-| `telemetry`      | `TelemetryConfig`             | Langfuse/OTel configuration.                                       |
-| `adapter`        | `ProviderAdapter`             | Provider override; defaults to the Claude adapter.                 |
-| `sandbox`        | `SandboxConfig \| false`      | Default sandbox applied to every run. `false` disables explicitly. |
+| Field            | Type                            | Description                                                        |
+| ---------------- | ------------------------------- | ------------------------------------------------------------------ |
+| `defaultOptions` | Provider-specific query options | Default query options applied to every run.                        |
+| `telemetry`      | `TelemetryConfig`               | Langfuse/OTel configuration.                                       |
+| `adapter`        | `ProviderAdapter`               | Provider override; defaults to the Claude adapter.                 |
+| `sandbox`        | `SandboxConfig \| false`        | Default sandbox applied to every run. `false` disables explicitly. |
 
 ### `runAgent(options)`
 
 #### `AgentRunOptions`
 
-| Field       | Type                          | Description                                                                                |
-| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `prompt`    | `string \| object`            | The prompt to send to the agent.                                                           |
-| `options`   | `Partial<ClaudeQueryOptions>` | Per-run query options merged over runner defaults.                                         |
-| `onMessage` | `RunnerMessageHandler`        | Callback invoked for each streamed message.                                                |
-| `telemetry` | `AgentRunTelemetryAttributes` | Per-run Langfuse trace attributes (traceName, userId, sessionId, tags, version, metadata). |
-| `sandbox`   | `SandboxConfig \| false`      | Per-run sandbox config merged over runner default. `false` disables for this run.          |
+| Field       | Type                            | Description                                                                                |
+| ----------- | ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `prompt`    | `string \| object`              | The prompt to send to the agent.                                                           |
+| `options`   | Provider-specific query options | Per-run query options merged over runner defaults.                                         |
+| `onMessage` | `RunnerMessageHandler`          | Callback invoked for each streamed message.                                                |
+| `telemetry` | `AgentRunTelemetryAttributes`   | Per-run Langfuse trace attributes (traceName, userId, sessionId, tags, version, metadata). |
+| `sandbox`   | `SandboxConfig \| false`        | Per-run sandbox config merged over runner default. `false` disables for this run.          |
 
 #### `AgentRunResult`
 

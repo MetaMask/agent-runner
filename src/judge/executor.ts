@@ -1,10 +1,10 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
-
+import { createCredentialScrubber } from '../credential-redactor.js';
 import { JudgeError } from '../errors.js';
 import { redactSensitive } from '../message-parser.js';
 import type {
   AgentMessage,
   AgentRunResult,
+  ProviderAdapter,
   RunnerMessageHandler,
 } from '../types.js';
 import type {
@@ -35,55 +35,15 @@ function escapeXml(text: string): string {
 }
 
 /**
- * Translates a raw SDK result message into the normalized
- * {@link AgentMessage} format.
- *
- * The judge calls `query()` directly, bypassing the provider adapter that
- * normally translates wire-format messages. This helper ensures the
- * `onMessage` callback receives the same shape consumers expect
- * (e.g. `success` instead of `subtype`, `turns` instead of `num_turns`).
- *
- * @param raw - The raw SDK result message.
- * @returns A normalized agent result message.
- */
-function translateRawResultMessage(raw: Record<string, unknown>): AgentMessage {
-  const hasStructuredOutput =
-    raw.structured_output !== null && raw.structured_output !== undefined;
-
-  let result;
-
-  if (hasStructuredOutput) {
-    result = JSON.stringify(raw.structured_output);
-  }
-
-  if (!result && typeof raw.result === 'string') {
-    result = raw.result;
-  }
-
-  return {
-    type: 'result',
-    success: raw.subtype === 'success',
-    ...(result ? { result } : {}),
-    ...(typeof raw.total_cost_usd === 'number'
-      ? { costUsd: raw.total_cost_usd }
-      : {}),
-    ...(typeof raw.num_turns === 'number' ? { turns: raw.num_turns } : {}),
-    ...(typeof raw.duration_ms === 'number'
-      ? { durationMs: raw.duration_ms }
-      : {}),
-    ...(typeof raw.error === 'string' ? { error: raw.error } : {}),
-    raw,
-  };
-}
-
-/**
  * Validates judge configuration, throwing on invalid score field definitions.
  *
  * @param config - The judge configuration to validate.
  * @throws {JudgeError} If scoreFields is empty, contains duplicates,
  *   uses reserved names, or has invalid ranges.
  */
-function validateJudgeConfig(config: JudgeConfig): void {
+function validateJudgeConfig<TOptions extends object>(
+  config: JudgeConfig<TOptions>,
+): void {
   if (config.scoreFields.length === 0) {
     throw new JudgeError('scoreFields must not be empty');
   }
@@ -116,47 +76,43 @@ function validateJudgeConfig(config: JudgeConfig): void {
 /**
  * Runs an LLM-as-a-judge evaluation on a completed agent run.
  *
+ * @param adapter - Active provider adapter used for structured execution.
  * @param runResult - The completed agent run result to evaluate.
  * @param config - Judge configuration including rubric and score schema.
  * @param context - Optional context such as task prompt and outcome status.
- * @param onMessage - Optional callback invoked for each raw SDK message.
+ * @param onMessage - Optional callback invoked for each normalized adapter message.
  * @returns The judge evaluation result with scores and reasoning.
  */
-export async function executeJudge(
+export async function executeJudge<TOptions extends object, TPrompt>(
+  adapter: ProviderAdapter<TOptions, TPrompt>,
   runResult: AgentRunResult,
-  config: JudgeConfig,
+  config: JudgeConfig<TOptions>,
   context?: JudgeContext,
   onMessage?: RunnerMessageHandler,
 ): Promise<JudgeResult> {
   validateJudgeConfig(config);
-  const transcript = formatTranscript(runResult);
+  if (!adapter.runStructured) {
+    throw new JudgeError(
+      `Provider adapter \`${adapter.name}\` does not support structured-output judging. Implement the adapter's runStructured capability to use judge().`,
+    );
+  }
+  const scrubCredentials = createCredentialScrubber();
+  const transcript = formatTranscript(runResult, scrubCredentials);
   const userPrompt = buildJudgePrompt(transcript, context);
   const outputSchema = buildOutputSchema(config.scoreFields);
 
   let resultText: string | undefined;
 
   try {
-    for await (const message of query({
+    for await (const message of adapter.runStructured({
       prompt: userPrompt,
-      options: {
-        tools: [],
-        maxTurns: 5,
-        settingSources: [],
-        ...config.queryOptions,
-        systemPrompt: config.rubric,
-        outputFormat: { type: 'json_schema', schema: outputSchema },
-        persistSession: false,
-      },
+      systemPrompt: config.rubric,
+      schema: outputSchema,
+      options: config.queryOptions ?? {},
     })) {
-      const sdkMessage = message as Record<string, unknown>;
-
       if (onMessage) {
         try {
-          const translated =
-            sdkMessage.type === 'result'
-              ? translateRawResultMessage(sdkMessage)
-              : (sdkMessage as AgentMessage);
-          await onMessage(translated);
+          await onMessage(message);
         } catch (handlerError) {
           const cause =
             handlerError instanceof Error
@@ -166,22 +122,12 @@ export async function executeJudge(
         }
       }
 
-      if (sdkMessage.type === 'result') {
-        if (sdkMessage.subtype === 'success') {
-          // With outputFormat (structured output), the SDK returns the
-          // parsed object in `structured_output` instead of a JSON string
-          // in `result`.  Fall back to `result` for non-structured runs.
-          if (
-            sdkMessage.structured_output !== null &&
-            sdkMessage.structured_output !== undefined
-          ) {
-            resultText = JSON.stringify(sdkMessage.structured_output);
-          } else if (typeof sdkMessage.result === 'string') {
-            resultText = sdkMessage.result;
-          }
+      if (message.type === 'result') {
+        if (message.success) {
+          resultText = message.result;
         } else {
           throw new JudgeError(
-            `Judge agent terminated with status: ${String(sdkMessage.subtype)}`,
+            `Judge agent terminated unsuccessfully${message.error ? `: ${message.error}` : ''}`,
           );
         }
       }
@@ -206,13 +152,18 @@ export async function executeJudge(
  * Formats agent run messages into a transcript string for the judge.
  *
  * @param runResult - The agent run result containing messages.
+ * @param scrubCredentials - Always-on scrubber removing forwarded provider
+ *   credential values before the transcript is sent to the judge model.
  * @returns A formatted transcript string.
  */
-function formatTranscript(runResult: AgentRunResult): string {
+function formatTranscript(
+  runResult: AgentRunResult,
+  scrubCredentials: (text: string) => string,
+): string {
   return runResult.messages
     .map(
       (message, index) =>
-        `[${String(index)}] ${message.type}: ${summarizeMessage(message)}`,
+        `[${String(index)}] ${message.type}: ${summarizeMessage(message, scrubCredentials)}`,
     )
     .join('\n\n');
 }
@@ -221,36 +172,42 @@ function formatTranscript(runResult: AgentRunResult): string {
  * Produces a concise text summary of a single agent message.
  *
  * @param message - The agent message to summarize.
+ * @param scrubCredentials - Always-on credential value scrubber.
  * @returns A human-readable summary string.
  */
-function summarizeMessage(message: AgentMessage): string {
+function summarizeMessage(
+  message: AgentMessage,
+  scrubCredentials: (text: string) => string,
+): string {
   switch (message.type) {
     case 'init':
       return `session=${message.sessionId} model=${message.model ?? 'unknown'}`;
     case 'generation':
       return escapeXml(
-        message.text ||
-          JSON.stringify(
-            message.toolCalls.map((tc) => ({
-              ...tc,
-              input: redactSensitive(tc.input),
-            })),
-          ),
+        scrubCredentials(
+          message.text ||
+            JSON.stringify(
+              message.toolCalls.map((tc) => ({
+                ...tc,
+                input: redactSensitive(tc.input),
+              })),
+            ),
+        ),
       );
     case 'tool_result':
-      return `${message.isError ? '[ERROR] ' : ''}${escapeXml(message.content)}`;
+      return `${message.isError ? '[ERROR] ' : ''}${escapeXml(scrubCredentials(message.content))}`;
     case 'result':
       return message.success
-        ? `success: ${escapeXml(message.result ?? '')}`
-        : `error: ${escapeXml(message.error ?? 'unknown')}`;
+        ? `success: ${escapeXml(scrubCredentials(message.result ?? ''))}`
+        : `error: ${escapeXml(scrubCredentials(message.error ?? 'unknown'))}`;
     case 'system':
       return message.subtype;
     case 'tool_progress':
       return `${message.toolName} (${String(message.elapsedSeconds)}s)`;
     case 'tool_use_summary':
-      return escapeXml(message.summary);
+      return escapeXml(scrubCredentials(message.summary));
     case 'rate_limit':
-      return escapeXml(message.status);
+      return escapeXml(scrubCredentials(message.status));
     default:
       return '';
   }
