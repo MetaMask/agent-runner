@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1]
+
 ### Fixed
 
-- fix: preserve the caller-provided Langfuse `sessionId` instead of overwriting it with the Claude Agent SDK's per-run session id, so all agent runs in a workflow correlate under one session (the SDK session id is retained in trace metadata as `agentSessionId`)
+- fix: preserve caller-provided Langfuse session id in message handler ([#23](https://github.com/MetaMask/agent-runner/pull/23))
 
 ## [0.3.0]
 
@@ -56,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix: cleanup unused publish docs ([#8](https://github.com/MetaMask/agent-runner/pull/8))
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/MetaMask/agent-runner/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MetaMask/agent-runner/releases/tag/v0.1.0
