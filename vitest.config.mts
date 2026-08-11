@@ -17,7 +17,7 @@ export default defineConfig({
       exclude: ['src/**/*.test-d.ts'],
       thresholds: {
         autoUpdate: true,
-        branches: 95.29,
+        branches: 95.3,
         functions: 98.31,
         lines: 98.18,
         statements: 98.19,

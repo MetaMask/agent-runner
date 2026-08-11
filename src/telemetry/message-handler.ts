@@ -230,12 +230,20 @@ export function createMessageHandler(
       return;
     }
 
-    state.langfuseSessionId = message.sessionId;
+    // Prefer the caller-provided session id so every run in a workflow shares
+    // one Langfuse session. The SDK mints a fresh per-run `message.sessionId`;
+    // adopting it here (the previous behavior) split each run into its own
+    // session. The SDK id is kept in metadata as `agentSessionId`.
+    state.langfuseSessionId = config.initialSessionId ?? message.sessionId;
+    const metadata: Record<string, string> = {
+      ...config.traceMetadata,
+      agentSessionId: message.sessionId,
+    };
     traceSpan(
       {
         sessionId: state.langfuseSessionId,
         userId: config.userId,
-        metadata: config.traceMetadata,
+        metadata,
         tags: config.traceTags,
         version: config.traceVersion,
       },
