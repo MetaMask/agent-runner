@@ -24,7 +24,7 @@ export const DEFAULT_DOCKER_SANDBOX_WORKSPACE_PATH = '/workspace';
  * {@link DockerSandboxConfig.forwardEnv} to `false` or narrow the list by
  * providing their own array.
  */
-export const DEFAULT_DOCKER_SANDBOX_FORWARD_ENV: readonly string[] = [
+export const CLAUDE_DOCKER_SANDBOX_FORWARD_ENV: readonly string[] = [
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
   'CLAUDE_CODE_OAUTH_TOKEN',
@@ -33,6 +33,19 @@ export const DEFAULT_DOCKER_SANDBOX_FORWARD_ENV: readonly string[] = [
   'HTTPS_PROXY',
   'NO_PROXY',
 ] as const;
+
+/** Environment forwarded by the Pi adapter when `forwardEnv` is omitted. */
+export const PI_DOCKER_SANDBOX_FORWARD_ENV: readonly string[] = [
+  'LITELLM_BASE_URL',
+  'LITELLM_API_KEY',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+] as const;
+
+/** Backward-compatible alias for the original Claude Docker defaults. */
+export const DEFAULT_DOCKER_SANDBOX_FORWARD_ENV =
+  CLAUDE_DOCKER_SANDBOX_FORWARD_ENV;
 
 /**
  * Describes a single bind mount to add to the sandbox container.

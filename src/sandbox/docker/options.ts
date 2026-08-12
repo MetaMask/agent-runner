@@ -211,6 +211,8 @@ export type NormalizeDockerSandboxConfigContext = {
   hostCwd: string;
   /** Source of host environment variables for forwarding. */
   env?: Record<string, string | undefined>;
+  /** Adapter-owned forwarding defaults used only when config.forwardEnv is absent. */
+  defaultForwardEnv?: readonly string[];
 };
 
 /**
@@ -274,7 +276,14 @@ export function normalizeDockerSandboxConfig(
 
   const workspace = normalizeWorkspace(config.workspace, context.hostCwd);
   const mounts = normalizeMounts(config.mounts, context.hostCwd, workspace);
-  const env = normalizeEnv(config.env, config.forwardEnv, envSource);
+  const defaultForwardEnv =
+    context.defaultForwardEnv ?? DEFAULT_DOCKER_SANDBOX_FORWARD_ENV;
+  const env = normalizeEnv(
+    config.env,
+    config.forwardEnv,
+    envSource,
+    defaultForwardEnv,
+  );
   const bridge = normalizeBridge(config.bridge);
 
   const unsafeDockerArgs = [...(config.unsafeDockerArgs ?? [])];
@@ -286,7 +295,7 @@ export function normalizeDockerSandboxConfig(
     workspace,
     mounts,
     env,
-    forwardEnv: normalizeForwardEnv(config.forwardEnv),
+    forwardEnv: normalizeForwardEnv(config.forwardEnv, defaultForwardEnv),
     unsafeDockerArgs,
     setupCommands: [...(config.setupCommands ?? [])],
     cleanup: config.cleanup ?? DEFAULT_DOCKER_SANDBOX_CLEANUP,
@@ -412,17 +421,19 @@ function normalizeMounts(
  * @param explicitEnv - The caller's `config.env`.
  * @param forwardEnv - The caller's `forwardEnv` (or `false`).
  * @param envSource - Source of host env values.
+ * @param defaultForwardEnv - Adapter-owned defaults used when no list is supplied.
  * @returns The merged env map.
  */
 function normalizeEnv(
   explicitEnv: DockerSandboxConfig['env'],
   forwardEnv: DockerSandboxConfig['forwardEnv'],
   envSource: Record<string, string | undefined>,
+  defaultForwardEnv: readonly string[],
 ): Record<string, string> {
   const env: Record<string, string> = {};
 
   if (forwardEnv !== false) {
-    const forwardList = forwardEnv ?? DEFAULT_DOCKER_SANDBOX_FORWARD_ENV;
+    const forwardList = forwardEnv ?? defaultForwardEnv;
     for (const name of forwardList) {
       const value = envSource[name];
       if (typeof value === 'string') {
@@ -449,16 +460,18 @@ function normalizeEnv(
  * explicit `false` opt-out.
  *
  * @param forwardEnv - Caller-provided forwardEnv value.
+ * @param defaultForwardEnv - Adapter-owned defaults used when absent.
  * @returns The normalized value.
  */
 function normalizeForwardEnv(
   forwardEnv: DockerSandboxConfig['forwardEnv'],
+  defaultForwardEnv: readonly string[],
 ): readonly string[] | false {
   if (forwardEnv === false) {
     return false;
   }
   if (forwardEnv === undefined) {
-    return [...DEFAULT_DOCKER_SANDBOX_FORWARD_ENV];
+    return [...defaultForwardEnv];
   }
   return [...forwardEnv];
 }

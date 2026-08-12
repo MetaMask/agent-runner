@@ -214,11 +214,14 @@ export type ClaudeQueryOptions = NonNullable<ClaudeQueryInput['options']>;
 /**
  * Configuration passed to a provider adapter's run method.
  */
-export type RunConfig = {
+export type RunConfig<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+> = {
   /** The prompt to send to the agent. */
-  prompt: ClaudeQueryInput['prompt'];
+  prompt: TPrompt;
   /** Query options forwarded to the provider. */
-  options: Partial<ClaudeQueryOptions>;
+  options: Partial<TOptions>;
   /**
    * Resolved sandbox configuration for this run. Adapters that do not
    * declare sandbox support via {@link ProviderAdapter.capabilities}
@@ -229,6 +232,21 @@ export type RunConfig = {
    */
   sandbox?: SandboxConfig;
 };
+
+/**
+ * Configuration passed to a provider adapter's structured-output run method.
+ */
+export type RunStructuredConfig<TOptions extends object = ClaudeQueryOptions> =
+  {
+    /** The prompt to send to the agent. */
+    prompt: string;
+    /** System prompt controlling structured evaluation behavior. */
+    systemPrompt: string;
+    /** JSON schema the provider must enforce for the final result. */
+    schema: Record<string, unknown>;
+    /** Provider-specific options for the structured run. */
+    options: Partial<TOptions>;
+  };
 
 /**
  * Optional capability descriptor advertised by a provider adapter.
@@ -251,14 +269,42 @@ export type ProviderAdapterCapabilities = {
 };
 
 /**
+ * Provider-owned metadata used to describe a run in telemetry.
+ */
+export type ProviderRunMetadata = {
+  /** Model requested for the run, when known before initialization. */
+  model?: string;
+  /** Maximum number of turns configured for the run, when applicable. */
+  maxTurns?: number;
+};
+
+/**
  * Abstraction over an LLM agent provider, decoupling the runner from
  * any specific SDK.
  */
-export type ProviderAdapter = {
+export type ProviderAdapter<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+> = {
   /** Identifier for the provider (e.g. 'claude'). */
   name: string;
   /** Executes an agent run and yields normalized messages. */
-  run: (config: RunConfig) => AsyncIterable<AgentMessage>;
+  run: (config: RunConfig<TOptions, TPrompt>) => AsyncIterable<AgentMessage>;
+  /** Executes a structured-output run when supported by the provider. */
+  runStructured?: (
+    config: RunStructuredConfig<TOptions>,
+  ) => AsyncIterable<AgentMessage>;
+  /**
+   * Projects runner default options onto the subset safe to inherit for a
+   * structured-output run, dropping agent-execution policy fields (e.g.
+   * `tools`). Omitted means no defaults are inherited for structured runs.
+   *
+   * @param defaults - The runner-level default options.
+   * @returns The subset of defaults safe to merge under structured overrides.
+   */
+  getStructuredDefaults?: (defaults: Partial<TOptions>) => Partial<TOptions>;
+  /** Extracts provider-specific run metadata without exposing option keys to the runner. */
+  getRunMetadata?: (options: Partial<TOptions>) => ProviderRunMetadata;
   /**
    * Optional capability descriptor advertised by the adapter. Used by the
    * runner to validate that requested features (e.g. sandboxes) are
@@ -344,13 +390,16 @@ export type TelemetryLifecycle = {
 /**
  * Top-level configuration for creating an agent runner.
  */
-export type AgentRunnerConfig = {
+export type AgentRunnerConfig<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+> = {
   /** Default query options applied to every run. */
-  defaultOptions?: Partial<ClaudeQueryOptions>;
+  defaultOptions?: Partial<NoInfer<TOptions>>;
   /** Telemetry configuration for Langfuse/OTel integration. */
   telemetry?: TelemetryConfig;
   /** Provider adapter override; defaults to the Claude adapter. */
-  adapter?: ProviderAdapter;
+  adapter?: ProviderAdapter<TOptions, TPrompt>;
   /**
    * Default sandbox configuration applied to every run. Set to `false`
    * to explicitly disable sandboxing at the runner level; individual runs
@@ -382,11 +431,14 @@ export type AgentRunTelemetryAttributes = {
 /**
  * Options for a single agent run invocation.
  */
-export type AgentRunOptions = {
+export type AgentRunOptions<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+> = {
   /** The prompt to send to the agent. */
-  prompt: ClaudeQueryInput['prompt'];
+  prompt: NoInfer<TPrompt>;
   /** Per-run query options merged over runner defaults. */
-  options?: Partial<ClaudeQueryOptions>;
+  options?: Partial<NoInfer<TOptions>>;
   /** Callback invoked for each streamed message. */
   onMessage?: RunnerMessageHandler;
   /** Per-run Langfuse trace attributes. */
@@ -436,16 +488,21 @@ export type AgentRunResult = {
  * The main agent runner interface combining telemetry lifecycle
  * with agent execution, judging, and score posting.
  */
-export type AgentRunner = TelemetryLifecycle & {
+export type AgentRunner<
+  TOptions extends object = ClaudeQueryOptions,
+  TPrompt = ClaudeQueryInput['prompt'],
+> = TelemetryLifecycle & {
   /** Executes a single agent run with the given options. */
-  runAgent: (options: AgentRunOptions) => Promise<AgentRunResult>;
+  runAgent: (
+    options: AgentRunOptions<TOptions, TPrompt>,
+  ) => Promise<AgentRunResult>;
   /**
    * Runs an LLM-as-a-judge evaluation on a completed agent run.
    * Scores are only posted to Langfuse when `options.postScores` is `true`.
    */
   judge: (
     runResult: AgentRunResult,
-    judgeConfig: JudgeConfig,
+    judgeConfig: JudgeConfig<NoInfer<TOptions>>,
     context?: JudgeContext,
     options?: JudgeOptions,
   ) => Promise<JudgeResult>;

@@ -153,6 +153,34 @@ describe('normalizeDockerSandboxConfig', () => {
   });
 
   describe('env forwarding', () => {
+    it('uses adapter defaults without leaking keys between harnesses', () => {
+      const env = {
+        ANTHROPIC_API_KEY: 'claude',
+        LITELLM_API_KEY: 'pi',
+        LITELLM_BASE_URL: 'https://litellm',
+      };
+      const claude = normalizeDockerSandboxConfig(
+        { type: 'docker' },
+        {
+          hostCwd: HOST_CWD,
+          env,
+          defaultForwardEnv: ['ANTHROPIC_API_KEY'],
+        },
+      );
+      const pi = normalizeDockerSandboxConfig(
+        { type: 'docker' },
+        {
+          hostCwd: HOST_CWD,
+          env,
+          defaultForwardEnv: ['LITELLM_API_KEY', 'LITELLM_BASE_URL'],
+        },
+      );
+      expect(claude.env).toStrictEqual({ ANTHROPIC_API_KEY: 'claude' });
+      expect(pi.env).toStrictEqual({
+        LITELLM_API_KEY: 'pi',
+        LITELLM_BASE_URL: 'https://litellm',
+      });
+    });
     it('forwards default env vars from the env source', () => {
       const normalized = normalizeDockerSandboxConfig(
         { type: 'docker' },

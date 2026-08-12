@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the Pi harness, synchronous adapter selection API, isolated direct and
+  Docker execution, and normalized Pi message/tool events. Pi Docker execution
+  requires Node.js 22.19.0 or newer, raising the package Node.js floor.
+
 ## [0.3.1]
 
 ### Fixed

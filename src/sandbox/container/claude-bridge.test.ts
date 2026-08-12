@@ -1,8 +1,18 @@
 import { Readable, Writable } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ClaudeBridgeDeps } from './claude-bridge.js';
-import { BRIDGE_PROTOCOL_VERSION, runClaudeBridge } from './claude-bridge.js';
+import {
+  BRIDGE_PROTOCOL_VERSION,
+  describeError,
+  formatScalar,
+  isMain,
+  isPlainObject,
+  makeErrorEvent,
+  runClaudeBridge,
+  settleFailedMain,
+  settleSuccessfulMain,
+} from './claude-bridge.js';
 
 /**
  * SDK `query` call parameters consumed by the bridge fakes. Extracted
@@ -655,5 +665,69 @@ describe('runClaudeBridge', () => {
       expect(line).not.toMatch(/\n/u);
       expect(() => JSON.parse(line)).not.toThrow();
     }
+  });
+});
+
+describe('Claude bridge boundary helpers', () => {
+  it('recognizes only plain request records', () => {
+    expect(isPlainObject({})).toBe(true);
+    expect(isPlainObject(Object.create(null))).toBe(true);
+    expect(isPlainObject([])).toBe(false);
+    expect(isPlainObject(null)).toBe(false);
+    expect(isPlainObject('record')).toBe(false);
+  });
+
+  it('formats every scalar category used in protocol diagnostics', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(formatScalar('text')).toBe('"text"');
+    expect(formatScalar(undefined)).toBe('undefined');
+    expect(formatScalar({ value: 1 })).toBe('{"value":1}');
+    expect(formatScalar(circular)).toBe('[object Object]');
+    expect(formatScalar(() => undefined)).toBe('[function]');
+    expect(formatScalar(Symbol('value'))).toBe('Symbol(value)');
+    expect(formatScalar(12n)).toBe('12n');
+    expect(formatScalar(true)).toBe('true');
+  });
+
+  it('normalizes stackless and unnamed errors for wire and stderr output', () => {
+    const cause = new Error('failure');
+    cause.name = '';
+    delete cause.stack;
+    expect(makeErrorEvent(cause)).toMatchObject({
+      error: { name: 'Error', message: 'failure' },
+    });
+    expect(describeError(cause)).toBe(': failure');
+    expect(describeError('failure')).toBe('failure');
+  });
+
+  it('reports that an imported bridge module is not the main entry point', () => {
+    expect(isMain()).toBe(false);
+  });
+
+  it('settles standalone success and failure with an unrefed safety timer', () => {
+    const exit = vi
+      .spyOn(process, 'exit')
+      .mockImplementation(() => undefined as never);
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    const unref = vi.fn();
+    const timer = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation((callback: () => void) => {
+        callback();
+        return { unref } as unknown as NodeJS.Timeout;
+      });
+    expect(settleSuccessfulMain(0)).toBeUndefined();
+    settleFailedMain('fatal failure');
+    expect(exit).toHaveBeenNthCalledWith(1, 0);
+    expect(exit).toHaveBeenNthCalledWith(2, 1);
+    expect(stderr).toHaveBeenCalledWith(
+      '[claude-bridge] fatal: fatal failure\n',
+    );
+    expect(unref).toHaveBeenCalledTimes(2);
+    timer.mockRestore();
+    stderr.mockRestore();
+    exit.mockRestore();
+    process.exitCode = undefined;
   });
 });

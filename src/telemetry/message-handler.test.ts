@@ -281,6 +281,34 @@ describe('createMessageHandler', () => {
     expect(handler.getState().pendingTools.size).toBe(0);
   });
 
+  it('scrubs a forwarded credential from tool output with no redactor and redact off', () => {
+    vi.stubEnv('LITELLM_API_KEY', 'sk-litellm-super-secret-value');
+    const handler = createHandler({ redact: false });
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+    handler.handleMessage(
+      createGeneration({
+        toolCalls: [{ id: 'tool-1', name: 'Bash', input: { command: 'env' } }],
+      }),
+    );
+    const toolSpan = handler.getState().pendingTools.get('tool-1')?.span;
+
+    handler.handleMessage({
+      type: 'tool_result',
+      toolUseId: 'tool-1',
+      content: 'LITELLM_API_KEY=sk-litellm-super-secret-value',
+      isError: false,
+    });
+
+    expect(toolSpan?.update).toHaveBeenCalledWith({
+      output: 'LITELLM_API_KEY=[REDACTED_CREDENTIAL]',
+      metadata: { isError: false },
+    });
+    expect(handler.getState().lastTurnInput).toBe(
+      'LITELLM_API_KEY=[REDACTED_CREDENTIAL]',
+    );
+    vi.unstubAllEnvs();
+  });
+
   it('stores final result and error messages', () => {
     const handler = createHandler();
 

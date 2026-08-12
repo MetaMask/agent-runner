@@ -1,3 +1,7 @@
+import {
+  composeRedactors,
+  createCredentialScrubber,
+} from '../credential-redactor.js';
 import { redactSensitive } from '../message-parser.js';
 import type { AgentMessage, TelemetryRedactor, ToolCall } from '../types.js';
 import {
@@ -161,34 +165,39 @@ export type MessageHandler = {
 export function createMessageHandler(
   config: MessageHandlerConfig,
 ): MessageHandler {
+  // The credential scrubber always runs so that a forwarded provider key
+  // printed by a tool never reaches the telemetry backend, even when the
+  // caller supplies no value-level redactor and `redact` is false.
+  const redactValue = composeRedactors(
+    createCredentialScrubber(),
+    config.redactor,
+  );
+
   /**
-   * Applies the configured value-level redactor to a string, if any.
+   * Applies the always-on credential scrubber and optional value-level
+   * redactor to a string.
    *
    * @param value - The string leaf to scrub.
-   * @returns The scrubbed string, or the original when no redactor is set
-   * or the value is undefined.
+   * @returns The scrubbed string, or the original when the value is undefined.
    */
   function scrubText<Value extends string | undefined>(value: Value): Value {
-    if (config.redactor && typeof value === 'string') {
-      return config.redactor(value) as Value;
+    if (typeof value === 'string') {
+      return redactValue(value) as Value;
     }
     return value;
   }
 
   /**
-   * Recursively applies the value-level redactor to string leaves of a
-   * structured value, preserving the surrounding object and array shape.
+   * Recursively applies the always-on credential scrubber and optional
+   * value-level redactor to string leaves of a structured value, preserving
+   * the surrounding object and array shape.
    *
    * @param value - The value to scrub.
    * @returns The value with string leaves scrubbed.
    */
   function scrubValueLeaves(value: unknown): unknown {
-    if (!config.redactor) {
-      return value;
-    }
-
     if (typeof value === 'string') {
-      return config.redactor(value);
+      return redactValue(value);
     }
 
     if (Array.isArray(value)) {

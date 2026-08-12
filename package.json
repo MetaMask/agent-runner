@@ -1,7 +1,7 @@
 {
   "name": "@metamask/agent-runner",
   "version": "0.3.1",
-  "description": "Reusable Claude Agent SDK runner with Langfuse telemetry lifecycle support.",
+  "description": "Reusable Claude and Pi agent harness runner with Langfuse telemetry and Docker sandbox support.",
   "homepage": "https://github.com/MetaMask/agent-runner#readme",
   "bugs": {
     "url": "https://github.com/MetaMask/agent-runner/issues"
@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",
+    "@earendil-works/pi-coding-agent": "0.83.0",
     "@langfuse/client": "^5.3.0",
     "@langfuse/otel": "^5.3.0",
     "@langfuse/tracing": "^5.3.0",
@@ -95,11 +96,15 @@
     "fflate": "0.8.2"
   },
   "engines": {
-    "node": "^20 || ^22 || >=24"
+    "node": "^22.19.0 || >=24"
   },
   "packageManager": "yarn@4.16.0+sha256.ba05224324578801b9cc98170d64aa50b9a36733b440fb0942306da3fbbdc7d1",
   "lavamoat": {
     "allowScripts": {
+      "@google/genai": false,
+      "@earendil-works/pi-coding-agent>@earendil-works/pi-ai>@google/genai": false,
+      "@earendil-works/pi-coding-agent>@earendil-works/pi-ai>@google/genai>protobufjs": false,
+      "@earendil-works/pi-coding-agent>@earendil-works/pi-ai>protobufjs": false,
       "@lavamoat/preinstall-always-fail": false,
       "@langfuse/otel>@opentelemetry/exporter-trace-otlp-http>@opentelemetry/otlp-transformer>protobufjs": false,
       "@opentelemetry/sdk-node>@opentelemetry/exporter-logs-otlp-grpc>@grpc/grpc-js>@grpc/proto-loader>protobufjs": false,
