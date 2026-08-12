@@ -120,6 +120,7 @@ src/judge/executor.test.ts
   s_813ccf95204e9b::t_8f29840a5f448d 119
   s_813ccf95204e9b::t_77f2d794f476bb 486
   s_813ccf95204e9b::t_4436bdf115aa0d 898
+  s_7e7d171b72f111::t_3c93a6f2639735 196,303,366,398,424,911,951,1007,1037
 src/adapters/pi-adapter.test.ts
   s_f2c52a4069fa3e::t_a4e49b0a33c135 161
   s_f2c52a4069fa3e::t_042425654348b0 20
@@ -383,6 +384,7 @@ src/judge/types.ts
   s_813ccf95204e9b::t_cba4afa8a0b642 26-27,65-66
 CHANGELOG.md
   s_f2c52a4069fa3e::t_ba7deedce9392b 12-14
+  s_7e7d171b72f111::t_67af5ed280163b 10-11,15
 src/runner.test.ts
   s_813ccf95204e9b::t_9b6a704e66bb2f 93,102,142,564,580
 src/sandbox/container/claude-bridge.ts
@@ -433,6 +435,14 @@ yarn.lock
       "agent_id": {
         "tool": "claude",
         "id": "ses_02d36c61effegvHFVBLUE63taN",
+        "model": "unknown"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_7e7d171b72f111": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ses_009608c28ffe6s481EIPElJ80j",
         "model": "unknown"
       },
       "human_author": "cryptotavares <joao.tavares@consensys.net>"
