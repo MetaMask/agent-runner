@@ -1,4 +1,8 @@
-import type { ClaudeQueryOptions, RunnerMessageHandler } from '../types.js';
+import type {
+  SandboxConfig,
+  ClaudeQueryOptions,
+  RunnerMessageHandler,
+} from '../types.js';
 
 /**
  * Defines a single scoring dimension for LLM judge evaluation.
@@ -15,18 +19,20 @@ export type JudgeScoreField = {
 /**
  * Configuration for running an LLM-as-a-judge evaluation.
  */
-export type JudgeConfig = {
+export type JudgeConfig<TOptions extends object = ClaudeQueryOptions> = {
   /** System prompt / evaluation rubric for the judge. */
   rubric: string;
   /** Score dimensions the judge should return. Used for validation and clamping. */
   scoreFields: JudgeScoreField[];
   /**
-   * Query options forwarded to the SDK call.
+   * Query options forwarded to the SDK call, merged over any runner defaults
+   * the adapter deems safe to inherit for a structured run (e.g. the Pi
+   * adapter inherits `model` from `defaultOptions` but never `tools`).
    *
-   * Defaults applied when not set: `model` (`claude-sonnet-4-20250514`),
-   * `tools` (`[]`), `maxTurns` (`5`), `settingSources` (`[]`).
+   * Claude adapter defaults applied when not set: `tools` (`[]`),
+   * `maxTurns` (`5`), and `settingSources` (`[]`).
    */
-  queryOptions?: Partial<ClaudeQueryOptions>;
+  queryOptions?: Partial<NoInfer<TOptions>>;
 };
 
 /**
@@ -55,6 +61,10 @@ export type JudgeResult = {
  * Options for the runner `judge()` method.
  */
 export type JudgeOptions = {
+  /** Override the runner sandbox for structured judging. */
+  sandbox?: SandboxConfig | false;
+  /** Cancel structured judging. */
+  signal?: AbortSignal;
   /**
    * When `true`, automatically posts judge scores to the telemetry backend
    * after evaluation. Requires telemetry to be enabled and a trace ID on
@@ -62,8 +72,8 @@ export type JudgeOptions = {
    */
   postScores?: boolean;
   /**
-   * Callback invoked for each raw SDK message streamed during the judge
-   * agent run. Mirrors the `onMessage` callback on `AgentRunOptions`.
+   * Callback invoked for each normalized adapter message streamed during the
+   * judge run. Mirrors the `onMessage` callback on `AgentRunOptions`.
    * If the callback throws, the judge run terminates early with a
    * `JudgeError`.
    */

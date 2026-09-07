@@ -1,3 +1,7 @@
+import {
+  createCredentialScrubber,
+  scrubCredentials,
+} from '../credential-redactor.js';
 import { redactSensitive } from '../message-parser.js';
 import type { AgentMessage, TelemetryRedactor, ToolCall } from '../types.js';
 import {
@@ -161,18 +165,19 @@ export type MessageHandler = {
 export function createMessageHandler(
   config: MessageHandlerConfig,
 ): MessageHandler {
+  const scrubCredential = createCredentialScrubber();
   /**
-   * Applies the configured value-level redactor to a string, if any.
+   * Applies credential redaction followed by the caller's redactor.
    *
-   * @param value - The string leaf to scrub.
-   * @returns The scrubbed string, or the original when no redactor is set
-   * or the value is undefined.
+   * @param value - String leaf to scrub.
+   * @returns Scrubbed text, or undefined unchanged.
    */
   function scrubText<Value extends string | undefined>(value: Value): Value {
-    if (config.redactor && typeof value === 'string') {
-      return config.redactor(value) as Value;
+    if (typeof value !== 'string') {
+      return value;
     }
-    return value;
+    const scrubbed = scrubCredential(value);
+    return (config.redactor ? config.redactor(scrubbed) : scrubbed) as Value;
   }
 
   /**
@@ -183,12 +188,8 @@ export function createMessageHandler(
    * @returns The value with string leaves scrubbed.
    */
   function scrubValueLeaves(value: unknown): unknown {
-    if (!config.redactor) {
-      return value;
-    }
-
     if (typeof value === 'string') {
-      return config.redactor(value);
+      return scrubText(value);
     }
 
     if (Array.isArray(value)) {
@@ -447,7 +448,9 @@ export function createMessageHandler(
      * @param error - The run error.
      */
     recordError: (error: Error): void => {
-      state.runError = error;
+      state.runError = scrubCredentials(error, (text) =>
+        config.redact ? '[REDACTED]' : scrubText(text),
+      );
     },
     finalizePendingTools,
     finalizeSessionSpan,

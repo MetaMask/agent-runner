@@ -150,6 +150,15 @@ export async function createDockerSandbox(
       validateMountPaths(config);
       await runner.run('docker', runArgs);
     } catch (cause) {
+      // A cancelled docker client may have created the container before its
+      // response arrived. Remove it before unregistering even on start failure.
+      if (
+        cause instanceof Error &&
+        (cause.name === 'AbortError' ||
+          (cause.cause instanceof Error && cause.cause.name === 'AbortError'))
+      ) {
+        await bestEffortRemove(runner, containerName);
+      }
       if (config.cleanup !== 'never') {
         unregisterActiveContainer(containerName);
       }

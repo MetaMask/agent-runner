@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional pi Agent SDK adapter for isolated LiteLLM runs, Docker execution, structured judging, cancellation, and turn limits.
+- Provider-specific runner option types with backwards-compatible Claude defaults.
+
+### Fixed
+
+- Scrub configured credential values from pi messages, errors, telemetry, and judge inputs, including short credentials and nested error causes.
+
 ## [0.3.1]
 
 ### Fixed

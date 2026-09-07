@@ -1,8 +1,13 @@
+/* eslint-disable jsdoc/require-param, jsdoc/require-returns */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createCredentialScrubber,
+  scrubCredentials as scrubValue,
+} from '../../credential-redactor.js';
 import {
   DockerSandboxError,
   DockerSandboxProtocolError,
@@ -57,6 +62,48 @@ export const MAX_BRIDGE_QUEUE_SIZE = 10_000;
  */
 export const BRIDGE_SDK_PACKAGE_NAME = '@anthropic-ai/claude-agent-sdk';
 
+/** Exact Pi runtime version locked by the package architecture. */
+export const PI_BRIDGE_SDK_VERSION = '0.83.0';
+
+/** Runtime-specific data consumed by the generic Docker bootstrap. */
+export type DockerBridgeRuntimeDescriptor = {
+  /** Stable runtime identifier used in diagnostics. */
+  id: string;
+  /** NPM package installed beside the bridge. */
+  packageName: string;
+  /** Default bridge filename copied into the container. */
+  remoteBridgeFile: string;
+  /** Resolves the exact install version when no explicit override is supplied. */
+  resolveVersion: () => string | undefined;
+  /** Optional minimum Node.js version required by the runtime. */
+  minNodeVersion?: string;
+  /** Optional version lock that explicit overrides must match. */
+  exactVersion?: string;
+  /** Additional compiled files copied with their package-relative paths. */
+  files?: readonly string[];
+};
+
+/** Claude runtime descriptor retained behind compatibility wrappers. */
+export const CLAUDE_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
+  id: 'claude',
+  packageName: BRIDGE_SDK_PACKAGE_NAME,
+  remoteBridgeFile: DEFAULT_REMOTE_BRIDGE_FILE,
+  /** Resolves the installed Claude SDK version. */
+  resolveVersion: readHostSdkVersion,
+};
+
+/** Pi runtime descriptor for the standalone Pi bridge. */
+export const PI_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
+  id: 'pi',
+  packageName: '@earendil-works/pi-coding-agent',
+  remoteBridgeFile: 'sandbox/container/pi-bridge.mjs',
+  files: ['pi-runtime.mjs', 'credential-redactor.mjs'],
+  /** Returns the architecture-locked Pi version. */
+  resolveVersion: () => PI_BRIDGE_SDK_VERSION,
+  minNodeVersion: '22.19.0',
+  exactVersion: PI_BRIDGE_SDK_VERSION,
+};
+
 /**
  * Resolves the on-disk path of the compiled container bridge `.mjs`
  * file shipped with this package. The build emits
@@ -69,12 +116,18 @@ export const BRIDGE_SDK_PACKAGE_NAME = '@anthropic-ai/claude-agent-sdk';
  * @returns Absolute path to the compiled bridge script.
  */
 export function resolveDefaultBridgeHostPath(): string {
+  return resolveBridgeHostPath(CLAUDE_BRIDGE_RUNTIME);
+}
+
+/** Resolves the built bridge path for a runtime descriptor. */
+export function resolveBridgeHostPath(
+  runtime: DockerBridgeRuntimeDescriptor,
+): string {
   const here = fileURLToPath(import.meta.url);
   return path.resolve(
     path.dirname(here),
-    '..',
-    'container',
-    DEFAULT_REMOTE_BRIDGE_FILE,
+    ...(runtime.files === undefined ? ['..', 'container'] : ['..', '..']),
+    runtime.remoteBridgeFile,
   );
 }
 
@@ -198,6 +251,14 @@ export type BootstrapDockerClaudeBridgeInput = {
   readHostSdkVersion?: () => string | undefined;
 };
 
+/** Input for the generic runtime-aware bridge bootstrap. */
+export type BootstrapDockerBridgeInput = BootstrapDockerClaudeBridgeInput & {
+  /** Cancellation checked during bootstrap. */
+  signal?: AbortSignal;
+  /** Runtime being bootstrapped. */
+  runtime: DockerBridgeRuntimeDescriptor;
+};
+
 /**
  * Result of {@link bootstrapDockerClaudeBridge}.
  */
@@ -230,20 +291,42 @@ export type BootstrapDockerClaudeBridgeResult = {
 export async function bootstrapDockerClaudeBridge(
   input: BootstrapDockerClaudeBridgeInput,
 ): Promise<BootstrapDockerClaudeBridgeResult> {
+  return await bootstrapDockerBridge({
+    ...input,
+    runtime: CLAUDE_BRIDGE_RUNTIME,
+  });
+}
+
+/** Bootstraps an arbitrary descriptor-defined SDK bridge. */
+export async function bootstrapDockerBridge(
+  input: BootstrapDockerBridgeInput,
+): Promise<BootstrapDockerClaudeBridgeResult> {
   const { sandbox } = input;
   const runner = input.commandRunner;
   const bridgeConfig = input.config.bridge;
-  const bridgeHostPath = input.bridgeHostPath ?? resolveDefaultBridgeHostPath();
+  const bridgeHostPath =
+    input.bridgeHostPath ?? resolveBridgeHostPath(input.runtime);
   const remoteBridgeDir = input.remoteBridgeDir ?? DEFAULT_REMOTE_BRIDGE_DIR;
-  const remoteBridgeFile = input.remoteBridgeFile ?? DEFAULT_REMOTE_BRIDGE_FILE;
+  const remoteBridgeFile =
+    input.remoteBridgeFile ?? input.runtime.remoteBridgeFile;
   const remoteBridgePath = `${remoteBridgeDir}/${remoteBridgeFile}`;
+  input.signal?.throwIfAborted();
 
-  await preflightNodeAndNpm(runner, sandbox.containerName, bridgeConfig);
+  await preflightNodeAndNpm(
+    runner,
+    sandbox.containerName,
+    bridgeConfig,
+    input.runtime,
+  );
 
   await runDockerExec(
     runner,
     sandbox.containerName,
-    ['sh', '-lc', `mkdir -p ${shellEscape(remoteBridgeDir)}`],
+    [
+      'sh',
+      '-lc',
+      `mkdir -p ${shellEscape(path.posix.dirname(remoteBridgePath))}`,
+    ],
     `prepare bridge directory (${remoteBridgeDir})`,
   );
 
@@ -260,14 +343,39 @@ export async function bootstrapDockerClaudeBridge(
     );
   }
 
-  const sdkVersion = resolveBridgeSdkVersion({
-    config: input.config,
-    ...(input.readHostSdkVersion === undefined
-      ? {}
-      : { readHostSdkVersion: input.readHostSdkVersion }),
-  });
+  for (const file of input.runtime.files ?? []) {
+    await runner.run('docker', [
+      'cp',
+      path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        file,
+      ),
+      `${sandbox.containerName}:${remoteBridgeDir}/${file}`,
+    ]);
+  }
 
-  const pkgJson = buildBridgePackageJson(sdkVersion);
+  const explicitVersion = input.config.bridge.sdkVersion;
+  const sdkVersion =
+    explicitVersion ??
+    input.readHostSdkVersion?.() ??
+    input.runtime.resolveVersion();
+  if (sdkVersion === undefined) {
+    throw new DockerSandboxError(
+      `Could not determine ${input.runtime.packageName} version for the ${input.runtime.id} bridge.`,
+    );
+  }
+  if (
+    input.runtime.exactVersion !== undefined &&
+    sdkVersion !== input.runtime.exactVersion
+  ) {
+    throw new DockerSandboxError(
+      `${input.runtime.id} bridge requires ${input.runtime.packageName}@${input.runtime.exactVersion}; received ${sdkVersion}.`,
+    );
+  }
+
+  const pkgJson = buildBridgePackageJson(input.runtime.packageName, sdkVersion);
   try {
     await runner.run(
       'docker',
@@ -302,12 +410,12 @@ export async function bootstrapDockerClaudeBridge(
         '--no-audit',
         '--no-fund',
         '--ignore-scripts',
-        `${BRIDGE_SDK_PACKAGE_NAME}@${sdkVersion}`,
+        `${input.runtime.packageName}@${sdkVersion}`,
       ]);
     } catch (cause) {
       throw wrapDockerSandboxError(
         `Failed to install bridge runtime in container \`${sandbox.containerName}\` ` +
-          `(npm install ${BRIDGE_SDK_PACKAGE_NAME}@${sdkVersion})`,
+          `(npm install ${input.runtime.packageName}@${sdkVersion})`,
         cause,
       );
     }
@@ -360,6 +468,14 @@ export type RunDockerClaudeBridgeInput = {
   preparedBridge?: BootstrapDockerClaudeBridgeResult;
 };
 
+/** Generic bridge-run input with a runtime descriptor. */
+export type RunDockerBridgeInput = RunDockerClaudeBridgeInput & {
+  /** Cancels the running docker exec. */
+  signal?: AbortSignal;
+  /** Runtime being invoked. */
+  runtime: DockerBridgeRuntimeDescriptor;
+};
+
 /**
  * Bootstraps the bridge (when not already prepared), invokes it via
  * `docker exec`, and exposes the SDK message stream as an
@@ -381,6 +497,13 @@ export type RunDockerClaudeBridgeInput = {
 export function runDockerClaudeBridge(
   input: RunDockerClaudeBridgeInput,
 ): AsyncIterable<unknown> {
+  return runDockerBridge({ ...input, runtime: CLAUDE_BRIDGE_RUNTIME });
+}
+
+/** Runs a descriptor-defined bridge using the unchanged protocol-v1 stream. */
+export function runDockerBridge(
+  input: RunDockerBridgeInput,
+): AsyncIterable<unknown> {
   /**
    * AsyncIterator factory wired into the returned AsyncIterable.
    *
@@ -401,11 +524,13 @@ export function runDockerClaudeBridge(
  * @yields Each raw SDK message reported by the in-container bridge.
  */
 async function* createBridgeIterator(
-  input: RunDockerClaudeBridgeInput,
+  input: RunDockerBridgeInput,
 ): AsyncGenerator<unknown> {
   const prepared =
     input.preparedBridge ??
-    (await bootstrapDockerClaudeBridge({
+    (await bootstrapDockerBridge({
+      runtime: input.runtime,
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
       sandbox: input.sandbox,
       config: input.config,
       commandRunner: input.commandRunner,
@@ -436,6 +561,13 @@ async function* createBridgeIterator(
   let runError: Error | null = null;
   let runCompleted = false;
   const wakerHolder: WakerHolder = { current: null };
+  // The container bridge runs untrusted, model-controlled tools, so any error
+  // text or stderr it returns may echo a forwarded provider credential. Scrub
+  // those values before they surface in a host-side error, log, or telemetry.
+  const scrubCredentials = createCredentialScrubber({
+    ...process.env,
+    ...input.config.env,
+  });
 
   /**
    * Wakes the consumer loop if it is currently awaiting more input.
@@ -498,6 +630,18 @@ async function* createBridgeIterator(
   // bridge to finish.
   const abortController = new AbortController();
 
+  /**
+   *
+   */
+  const cancel = (): void => {
+    abortController.abort();
+    wake();
+  };
+  input.signal?.addEventListener('abort', cancel, { once: true });
+  if (input.signal?.aborted) {
+    cancel();
+  }
+
   const runPromise = input.commandRunner
     .run('docker', execArgs, {
       stdin: serializeBridgeRequest(request),
@@ -510,7 +654,9 @@ async function* createBridgeIterator(
       (result) => {
         if (result.exitCode !== 0) {
           runError = new DockerSandboxError(
-            `Docker bridge for container \`${containerName}\` exited with code ${result.exitCode}.${formatStderrExcerpt(result.stderr)}`,
+            scrubCredentials(
+              `Docker bridge for container \`${containerName}\` exited with code ${result.exitCode}.${formatStderrExcerpt(result.stderr)}`,
+            ),
           );
         }
         return undefined;
@@ -518,9 +664,11 @@ async function* createBridgeIterator(
       (cause: unknown) => {
         runError =
           cause instanceof Error
-            ? cause
+            ? scrubValue(cause, scrubCredentials)
             : new DockerSandboxError(
-                `Docker bridge for container \`${containerName}\` failed: ${String(cause)}`,
+                scrubCredentials(
+                  `Docker bridge for container \`${containerName}\` failed: ${String(cause)}`,
+                ),
               );
         return undefined;
       },
@@ -533,6 +681,7 @@ async function* createBridgeIterator(
   let doneSeen = false;
   try {
     while (true) {
+      input.signal?.throwIfAborted();
       if (parseError !== null) {
         const errorToThrow: DockerSandboxProtocolError = parseError;
         throw errorToThrow;
@@ -545,11 +694,15 @@ async function* createBridgeIterator(
         }
         if (event.type === 'error') {
           const named = event.error.name || 'Error';
-          const message = `Docker bridge for container \`${containerName}\` reported an error: ${named}: ${event.error.message}`;
+          const message = scrubCredentials(
+            `Docker bridge for container \`${containerName}\` reported an error: ${named}: ${event.error.message}`,
+          );
           if (event.error.stack !== undefined) {
-            const remoteCause = new Error(event.error.message);
+            const remoteCause = new Error(
+              scrubCredentials(event.error.message),
+            );
             remoteCause.name = named;
-            remoteCause.stack = event.error.stack;
+            remoteCause.stack = scrubCredentials(event.error.stack);
             throw new DockerSandboxError(message, { cause: remoteCause });
           }
           throw new DockerSandboxError(message);
@@ -587,6 +740,7 @@ async function* createBridgeIterator(
     // failure that arrived before the abort has already been surfaced
     // (or replaced by the original termination cause).
     await runPromise;
+    input.signal?.removeEventListener('abort', cancel);
   }
 }
 
@@ -633,14 +787,23 @@ async function preflightNodeAndNpm(
   runner: DockerCommandRunner,
   containerName: string,
   bridgeConfig: NormalizedDockerSandboxConfig['bridge'],
+  runtime: DockerBridgeRuntimeDescriptor,
 ): Promise<void> {
-  await preflightBinary(
+  const nodeVersion = await preflightBinary(
     runner,
     containerName,
     bridgeConfig.nodeCommand,
     'Node.js',
-    'Install Node.js in the sandbox image (or set `sandbox.bridge.nodeCommand` to its path) before running the Claude bridge.',
+    `Install Node.js in the sandbox image (or set \`sandbox.bridge.nodeCommand\` to its path) before running the ${runtime.id} bridge.`,
   );
+  if (
+    runtime.minNodeVersion !== undefined &&
+    !isVersionAtLeast(nodeVersion, runtime.minNodeVersion)
+  ) {
+    throw new DockerSandboxError(
+      `${runtime.id} bridge requires Node.js >=${runtime.minNodeVersion}; container reported ${nodeVersion.trim()}.`,
+    );
+  }
   if (bridgeConfig.install) {
     await preflightBinary(
       runner,
@@ -668,15 +831,16 @@ async function preflightBinary(
   command: string,
   friendlyName: string,
   guidance: string,
-): Promise<void> {
+): Promise<string> {
   try {
-    await runner.run('docker', [
+    const result = await runner.run('docker', [
       'exec',
       containerName,
       'sh',
       '-lc',
       `${shellEscape(command)} --version`,
     ]);
+    return result.stdout;
   } catch (cause) {
     const reason = cause instanceof Error ? cause.message : String(cause);
     throw new DockerSandboxError(
@@ -690,10 +854,14 @@ async function preflightBinary(
  * Builds the minimal `package.json` document written into the bridge
  * directory inside the container.
  *
+ * @param packageName - Runtime package name.
  * @param sdkVersion - SDK version that `npm install` will pin.
  * @returns A JSON string ready to be piped over stdin.
  */
-function buildBridgePackageJson(sdkVersion: string): string {
+function buildBridgePackageJson(
+  packageName: string,
+  sdkVersion: string,
+): string {
   return `${JSON.stringify(
     {
       name: 'metamask-agent-runner-bridge',
@@ -701,12 +869,29 @@ function buildBridgePackageJson(sdkVersion: string): string {
       private: true,
       type: 'module',
       dependencies: {
-        [BRIDGE_SDK_PACKAGE_NAME]: sdkVersion,
+        [packageName]: sdkVersion,
       },
     },
     null,
     2,
   )}\n`;
+}
+
+/** Compares dotted Node versions without a semver runtime dependency. */
+function isVersionAtLeast(actualOutput: string, minimum: string): boolean {
+  const match = /v?(\d+)\.(\d+)\.(\d+)/u.exec(actualOutput.trim());
+  if (!match) {
+    return false;
+  }
+  const actual = match.slice(1).map(Number);
+  const required = minimum.split('.').map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (actual[index] ?? 0) - (required[index] ?? 0);
+    if (difference !== 0) {
+      return difference > 0;
+    }
+  }
+  return true;
 }
 
 /**

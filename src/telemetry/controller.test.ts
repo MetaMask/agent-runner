@@ -11,6 +11,7 @@ const telemetryMocks = vi.hoisted(() => ({
   ),
   langfuseSpanProcessorConfigs: [] as object[],
   nodeSdkConfigs: [] as object[],
+  messageHandlerConfigs: [] as object[],
 }));
 
 vi.mock('@langfuse/otel', () => ({
@@ -64,6 +65,19 @@ vi.mock('../telemetry/tracing.js', () => ({
   flushTracing: vi.fn(async () => undefined),
 }));
 
+vi.mock('../telemetry/message-handler.js', () => ({
+  createMessageHandler: vi.fn((config: object) => {
+    telemetryMocks.messageHandlerConfigs.push(config);
+    return {
+      handleMessage: vi.fn(),
+      recordError: vi.fn(),
+      finalizePendingTools: vi.fn(),
+      finalizeSessionSpan: vi.fn(),
+      getState: vi.fn(() => ({ traceId: undefined })),
+    };
+  }),
+}));
+
 /** Mock adapter with captured run calls for test assertions. */
 type MockAdapter = {
   /** Captured adapter run call arguments. */
@@ -89,10 +103,12 @@ const resultMessage: AgentMessage = {
  * Creates a mock adapter for telemetry testing.
  *
  * @param messages - Messages emitted by the adapter.
+ * @param getRunMetadata - Optional provider metadata hook.
  * @returns The mock adapter and recorded run calls.
  */
 const createMockAdapter = (
   messages: AgentMessage[] = [initMessage, resultMessage],
+  getRunMetadata?: ProviderAdapter['getRunMetadata'],
 ): MockAdapter => {
   const runCalls: unknown[] = [];
   const adapter: ProviderAdapter = {
@@ -109,6 +125,7 @@ const createMockAdapter = (
         yield message;
       }
     },
+    ...(getRunMetadata === undefined ? {} : { getRunMetadata }),
   };
 
   return { runCalls, adapter };
@@ -123,6 +140,7 @@ describe('telemetry lifecycle', () => {
     vi.clearAllMocks();
     telemetryMocks.langfuseSpanProcessorConfigs.length = 0;
     telemetryMocks.nodeSdkConfigs.length = 0;
+    telemetryMocks.messageHandlerConfigs.length = 0;
     /* eslint-disable n/no-process-env */
     process.env.LANGFUSE_PUBLIC_KEY = 'pk-lf-test';
     process.env.LANGFUSE_SECRET_KEY = 'sk-lf-test';
@@ -198,6 +216,239 @@ describe('telemetry lifecycle', () => {
         options: { settingSources: [] },
       },
     ]);
+
+    await runner.shutdown();
+  });
+
+  it('does not prepare adapter metadata when telemetry is disabled', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const getRunMetadata = vi.fn(() => ({ model: 'unused' }));
+    const { adapter } = createMockAdapter(undefined, getRunMetadata);
+    const runner = createAgentRunner({ adapter });
+
+    const result = await runner.runAgent({ prompt: 'plain run' });
+
+    expect(result.isPartial).toBe(false);
+    expect(getRunMetadata).not.toHaveBeenCalled();
+    expect(telemetryMocks.messageHandlerConfigs).toStrictEqual([]);
+  });
+
+  it('passes non-JSON prompts to the adapter when telemetry is disabled', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const runCalls: unknown[] = [];
+    const adapter: ProviderAdapter<object, { value: bigint }> = {
+      name: 'bigint-prompt',
+      /**
+       * Captures the generic prompt without serializing it.
+       *
+       * @param config - Generic provider run configuration.
+       * @yields The normalized result message.
+       */
+      async *run(config): AsyncGenerator<AgentMessage> {
+        runCalls.push(config);
+        yield resultMessage;
+      },
+    };
+    const runner = createAgentRunner({ adapter });
+    const prompt = { value: 1n };
+
+    const result = await runner.runAgent({ prompt });
+
+    expect(result.isPartial).toBe(false);
+    expect(runCalls).toStrictEqual([
+      { prompt, options: { settingSources: [] } },
+    ]);
+  });
+
+  it('uses adapter-owned run metadata for telemetry', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const { adapter } = createMockAdapter(undefined, () => ({
+      model: 'provider-model',
+      maxTurns: 6,
+    }));
+    const getRunMetadata = vi.spyOn(adapter, 'getRunMetadata');
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    await runner.runAgent({ prompt: 'instrumented run' });
+
+    expect(getRunMetadata).toHaveBeenCalledWith({ settingSources: [] });
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ model: 'provider-model', maxTurns: 6 }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('uses neutral telemetry fallbacks when adapter metadata is unavailable', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const { adapter } = createMockAdapter();
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    await runner.runAgent({ prompt: 'instrumented run' });
+
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ model: 'unknown', maxTurns: 0 }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('continues when adapter metadata extraction throws', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const getRunMetadata = vi.fn(() => {
+      throw new Error('metadata failure');
+    });
+    const { adapter, runCalls } = createMockAdapter(undefined, getRunMetadata);
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    const result = await runner.runAgent({ prompt: 'instrumented run' });
+
+    expect(result.isPartial).toBe(false);
+    expect(runCalls).toHaveLength(1);
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ model: 'unknown', maxTurns: 0 }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('uses a safe telemetry prompt for non-JSON values', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const adapter: ProviderAdapter<object, { value: bigint }> = {
+      name: 'bigint-prompt',
+      /**
+       * Emits a successful result for the generic prompt.
+       *
+       * @yields The normalized result message.
+       */
+      async *run(): AsyncGenerator<AgentMessage> {
+        yield resultMessage;
+      },
+    };
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    const result = await runner.runAgent({ prompt: { value: 1n } });
+
+    expect(result.isPartial).toBe(false);
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ prompt: '[object Object]' }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('serializes object prompts for telemetry when possible', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const adapter: ProviderAdapter<object, { task: string }> = {
+      name: 'object-prompt',
+      /**
+       * Emits a successful result for the generic prompt.
+       *
+       * @yields The normalized result message.
+       */
+      async *run(): AsyncGenerator<AgentMessage> {
+        yield resultMessage;
+      },
+    };
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    const result = await runner.runAgent({ prompt: { task: 'inspect' } });
+
+    expect(result.isPartial).toBe(false);
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ prompt: '{"task":"inspect"}' }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('uses a neutral telemetry prompt when serialization and string conversion throw', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const adapter: ProviderAdapter<object, object> = {
+      name: 'throwing-prompt',
+      /**
+       * Emits a successful result for the generic prompt.
+       *
+       * @yields The normalized result message.
+       */
+      async *run(): AsyncGenerator<AgentMessage> {
+        yield resultMessage;
+      },
+    };
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+    const prompt = {
+      /** Throws during JSON serialization. */
+      toJSON(): never {
+        throw new Error('cannot serialize');
+      },
+      /** Throws during fallback string conversion. */
+      toString(): never {
+        throw new Error('cannot stringify');
+      },
+    };
+
+    const result = await runner.runAgent({ prompt });
+
+    expect(result.isPartial).toBe(false);
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ prompt: '[unserializable prompt]' }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('falls back only missing adapter metadata fields', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const { adapter } = createMockAdapter(undefined, () => ({ maxTurns: 4 }));
+    vi.spyOn(adapter, 'getRunMetadata');
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    await runner.runAgent({ prompt: 'instrumented run' });
+
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ model: 'unknown', maxTurns: 4 }),
+    );
+
+    await runner.shutdown();
+  });
+
+  it('preserves an adapter model while defaulting missing max turns', async () => {
+    const { createAgentRunner } = await import('../runner.js');
+    const { adapter } = createMockAdapter(undefined, () => ({
+      model: 'provider-model',
+    }));
+    vi.spyOn(adapter, 'getRunMetadata');
+    const runner = createAgentRunner({
+      adapter,
+      telemetry: { mode: 'enabled' },
+    });
+
+    await runner.runAgent({ prompt: 'instrumented run' });
+
+    expect(telemetryMocks.messageHandlerConfigs).toContainEqual(
+      expect.objectContaining({ model: 'provider-model', maxTurns: 0 }),
+    );
 
     await runner.shutdown();
   });

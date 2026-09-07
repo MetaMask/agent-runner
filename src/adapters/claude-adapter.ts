@@ -37,6 +37,16 @@ export function createClaudeAdapter(): ProviderAdapter {
     name: 'claude',
     capabilities: { sandboxes: ['docker'] },
     /**
+     * Describes the Claude run for telemetry.
+     *
+     * @param options - Claude options.
+     * @returns Model and turn limit.
+     */
+    getRunMetadata: (options) => ({
+      model: options.model ?? 'unknown',
+      maxTurns: options.maxTurns ?? 0,
+    }),
+    /**
      * Runs the Claude query and yields translated agent messages.
      *
      * Delegates raw-to-normalized message translation (including

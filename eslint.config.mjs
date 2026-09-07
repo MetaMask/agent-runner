@@ -50,7 +50,13 @@ const config = createConfig([
   // sandbox modules all run host-side and need the nodejs eslint extends so
   // they can call into the platform without per-line disables.
   {
-    files: ['src/adapters/claude-adapter.ts', 'src/sandbox/**/*.ts'],
+    files: [
+      'src/adapters/*-adapter.ts',
+      'src/pi-runtime.ts',
+      'src/credential-redactor.ts',
+      'src/judge/executor.ts',
+      'src/sandbox/**/*.ts',
+    ],
     ignores: ['**/*.test.ts'],
     extends: nodejs,
     rules: {

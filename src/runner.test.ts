@@ -565,6 +565,7 @@ describe('createAgentRunner', () => {
         judgeConfig,
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -579,6 +580,7 @@ describe('createAgentRunner', () => {
         judgeRunResult,
         judgeConfig,
         context,
+        undefined,
         undefined,
       );
     });

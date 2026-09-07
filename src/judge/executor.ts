@@ -1,11 +1,17 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
+import {
+  createCredentialScrubber,
+  scrubCredentials,
+} from '../credential-redactor.js';
 import { JudgeError } from '../errors.js';
 import { redactSensitive } from '../message-parser.js';
 import type {
   AgentMessage,
   AgentRunResult,
   RunnerMessageHandler,
+  RunStructuredConfig,
+  ClaudeQueryOptions,
 } from '../types.js';
 import type {
   JudgeConfig,
@@ -83,7 +89,9 @@ function translateRawResultMessage(raw: Record<string, unknown>): AgentMessage {
  * @throws {JudgeError} If scoreFields is empty, contains duplicates,
  *   uses reserved names, or has invalid ranges.
  */
-function validateJudgeConfig(config: JudgeConfig): void {
+function validateJudgeConfig<TOptions extends object>(
+  config: JudgeConfig<TOptions>,
+): void {
   if (config.scoreFields.length === 0) {
     throw new JudgeError('scoreFields must not be empty');
   }
@@ -120,78 +128,137 @@ function validateJudgeConfig(config: JudgeConfig): void {
  * @param config - Judge configuration including rubric and score schema.
  * @param context - Optional context such as task prompt and outcome status.
  * @param onMessage - Optional callback invoked for each raw SDK message.
+ * @param structured - Optional adapter-owned judging; omitted uses legacy Claude judging.
+ * @param structured.run - Structured execution method.
+ * @param structured.defaults - Safe inherited options.
+ * @param structured.sandbox - Resolved judge sandbox.
+ * @param structured.signal - Caller cancellation.
  * @returns The judge evaluation result with scores and reasoning.
  */
-export async function executeJudge(
+export async function executeJudge<
+  TOptions extends object = ClaudeQueryOptions,
+>(
   runResult: AgentRunResult,
-  config: JudgeConfig,
+  config: JudgeConfig<TOptions>,
   context?: JudgeContext,
   onMessage?: RunnerMessageHandler,
+  structured?: {
+    /** Adapter-owned structured execution. */
+    run: (config: RunStructuredConfig<TOptions>) => AsyncIterable<AgentMessage>;
+    /** Safe defaults inherited from the runner. */
+    defaults: Partial<TOptions>;
+    /** Resolved execution sandbox. */
+    sandbox: RunStructuredConfig<TOptions>['sandbox'];
+    /** Caller cancellation. */
+    signal: AbortSignal | undefined;
+  },
 ): Promise<JudgeResult> {
   validateJudgeConfig(config);
-  const transcript = formatTranscript(runResult);
-  const userPrompt = buildJudgePrompt(transcript, context);
+  const scrub = createCredentialScrubber({
+    ...process.env,
+    ...structured?.sandbox?.env,
+  });
+  const transcript = formatTranscript(scrubCredentials(runResult, scrub));
+  const userPrompt = buildJudgePrompt(
+    transcript,
+    scrubCredentials(context, scrub),
+  );
   const outputSchema = buildOutputSchema(config.scoreFields);
 
   let resultText: string | undefined;
 
   try {
-    for await (const message of query({
-      prompt: userPrompt,
-      options: {
-        tools: [],
-        maxTurns: 5,
-        settingSources: [],
-        ...config.queryOptions,
-        systemPrompt: config.rubric,
-        outputFormat: { type: 'json_schema', schema: outputSchema },
-        persistSession: false,
-      },
-    })) {
-      const sdkMessage = message as Record<string, unknown>;
-
-      if (onMessage) {
-        try {
-          const translated =
-            sdkMessage.type === 'result'
-              ? translateRawResultMessage(sdkMessage)
-              : (sdkMessage as AgentMessage);
-          await onMessage(translated);
-        } catch (handlerError) {
-          const cause =
-            handlerError instanceof Error
-              ? handlerError
-              : new Error(String(handlerError));
-          throw new JudgeError('Judge onMessage callback failed', { cause });
+    // eslint-disable-next-line no-negated-condition -- Keep the optional provider path before the unchanged legacy implementation.
+    if (structured !== undefined) {
+      for await (const message of structured.run({
+        prompt: userPrompt,
+        systemPrompt: scrub(config.rubric),
+        schema: outputSchema,
+        options: { ...structured.defaults, ...config.queryOptions },
+        ...(structured.sandbox === undefined
+          ? {}
+          : { sandbox: structured.sandbox }),
+        ...(structured.signal === undefined
+          ? {}
+          : { signal: structured.signal }),
+      })) {
+        if (onMessage) {
+          try {
+            await onMessage(message);
+          } catch (cause) {
+            throw new JudgeError('Judge onMessage callback failed', { cause });
+          }
+        }
+        if (message.type === 'result') {
+          if (!message.success) {
+            throw new JudgeError(
+              `Judge agent terminated unsuccessfully: ${message.error ?? 'unknown'}`,
+            );
+          }
+          resultText = message.result;
         }
       }
+    } else {
+      for await (const message of query({
+        prompt: userPrompt,
+        options: {
+          tools: [],
+          maxTurns: 5,
+          settingSources: [],
+          ...(config.queryOptions as Partial<ClaudeQueryOptions>),
+          systemPrompt: scrub(config.rubric),
+          outputFormat: { type: 'json_schema', schema: outputSchema },
+          persistSession: false,
+        },
+      })) {
+        const sdkMessage = message as Record<string, unknown>;
 
-      if (sdkMessage.type === 'result') {
-        if (sdkMessage.subtype === 'success') {
-          // With outputFormat (structured output), the SDK returns the
-          // parsed object in `structured_output` instead of a JSON string
-          // in `result`.  Fall back to `result` for non-structured runs.
-          if (
-            sdkMessage.structured_output !== null &&
-            sdkMessage.structured_output !== undefined
-          ) {
-            resultText = JSON.stringify(sdkMessage.structured_output);
-          } else if (typeof sdkMessage.result === 'string') {
-            resultText = sdkMessage.result;
+        if (onMessage) {
+          try {
+            const translated =
+              sdkMessage.type === 'result'
+                ? translateRawResultMessage(sdkMessage)
+                : (sdkMessage as AgentMessage);
+            await onMessage(translated);
+          } catch (handlerError) {
+            const cause =
+              handlerError instanceof Error
+                ? handlerError
+                : new Error(String(handlerError));
+            throw new JudgeError('Judge onMessage callback failed', { cause });
           }
-        } else {
-          throw new JudgeError(
-            `Judge agent terminated with status: ${String(sdkMessage.subtype)}`,
-          );
+        }
+
+        if (sdkMessage.type === 'result') {
+          if (sdkMessage.subtype === 'success') {
+            // With outputFormat (structured output), the SDK returns the
+            // parsed object in `structured_output` instead of a JSON string
+            // in `result`.  Fall back to `result` for non-structured runs.
+            if (
+              sdkMessage.structured_output !== null &&
+              sdkMessage.structured_output !== undefined
+            ) {
+              resultText = JSON.stringify(sdkMessage.structured_output);
+            } else if (typeof sdkMessage.result === 'string') {
+              resultText = sdkMessage.result;
+            }
+          } else {
+            throw new JudgeError(
+              `Judge agent terminated with status: ${String(sdkMessage.subtype)}`,
+            );
+          }
         }
       }
     }
   } catch (error) {
     if (error instanceof JudgeError) {
-      throw error;
+      throw scrubCredentials(error, scrub);
     }
     throw new JudgeError('Judge agent execution failed', {
-      cause: error instanceof Error ? error : new Error(String(error)),
+      cause: scrubCredentials(
+        error instanceof Error ? error : new Error(String(error)),
+        scrub,
+      ),
     });
   }
 
