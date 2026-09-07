@@ -238,7 +238,8 @@ function validatePiBridgeMessage(raw: unknown): AgentMessage {
             'id' in call &&
             typeof call.id === 'string' &&
             'name' in call &&
-            typeof call.name === 'string',
+            typeof call.name === 'string' &&
+            'input' in call,
         ) &&
         message.usage !== null &&
         typeof message.usage === 'object' &&

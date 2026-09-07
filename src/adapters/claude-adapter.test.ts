@@ -684,6 +684,17 @@ describe('createClaudeAdapter', () => {
       expect(adapter.defaultOptions).toStrictEqual({ settingSources: [] });
     });
 
+    it('describes runs for telemetry metadata', () => {
+      const adapter = createClaudeAdapter();
+      expect(adapter.getRunMetadata?.({})).toStrictEqual({
+        model: 'unknown',
+        maxTurns: 0,
+      });
+      expect(
+        adapter.getRunMetadata?.({ model: 'claude-x', maxTurns: 3 }),
+      ).toStrictEqual({ model: 'claude-x', maxTurns: 3 });
+    });
+
     it('runs in-process and bypasses the sandbox machinery when no sandbox is set', async () => {
       claudeMocks.query.mockReturnValueOnce(yieldMessages([]));
 

@@ -138,6 +138,8 @@ Every pi run uses a fresh in-memory session. Settings, extensions, skills, conte
 
 Pi emits the same normalized messages and telemetry as Claude. Reaching `maxTurns` produces `result.success: false`; cancellation or a throwing `onMessage` callback returns a partial result and stops active work. Cost is omitted when pricing for consumed tokens is unknown. Explicit zero prices report zero.
 
+`runAgent({ signal })` and `judge(..., { signal })` cancel only pi runs. The Claude adapter does not observe `signal` yet, so passing one there is a silent no-op.
+
 ### Pi sandbox and judge behavior
 
 Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, the runner performs no version check, so make sure the bridge directory already contains a compatible install. The Node version check applies inside the container, so a Node 20 host can still launch a supported pi container.

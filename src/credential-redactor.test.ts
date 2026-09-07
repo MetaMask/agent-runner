@@ -21,6 +21,16 @@ describe('credential redaction', () => {
     );
     expect(createCredentialScrubber({})('unchanged')).toBe('unchanged');
   });
+
+  it('scrubs multiple credential values, longest first', () => {
+    const scrub = createCredentialScrubber({
+      LITELLM_API_KEY: 'sk-two-short-key',
+      OTHER_API_KEY: 'sk-two-longer-credential-value',
+    });
+    expect(scrub('sk-two-longer-credential-value sk-two-short-key')).toBe(
+      '[REDACTED] [REDACTED]',
+    );
+  });
   it('copies errors, stacks, nested causes, and cycles without losing error identity', () => {
     const cause = new Error('sk-test-key cause');
     const error = new DockerSandboxError('sk-test-key failure', { cause });
