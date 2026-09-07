@@ -97,8 +97,9 @@ export type DockerSandboxBridgeConfig = {
  * When the runner should remove the sandbox container after a run.
  *
  * - `always`  Remove the container regardless of outcome.
- * - `on-success`  Keep the container when the run errors so it can be
- *   inspected. Kept containers retain their environment variables, which
+ * - `on-success`  Keep the container unless the run completed with a
+ *   successful result, so failed or interrupted runs can be inspected.
+ *   Kept containers retain their environment variables, which
  *   may include forwarded secrets. See the security note on
  *   {@link DockerSandboxConfig.envFile}.
  * - `never`  Always keep the container; the caller is responsible for

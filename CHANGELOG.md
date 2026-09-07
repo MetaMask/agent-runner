@@ -12,9 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional pi Agent SDK adapter for isolated LiteLLM runs, Docker execution, structured judging, cancellation, and turn limits.
 - Provider-specific runner option types with backwards-compatible Claude defaults.
 
+### Changed
+
+- Apply the `on-success` Docker cleanup policy uniformly: adapters keep the container unless the run completed with a successful result.
+- Take provider option defaults from `adapter.defaultOptions` only; the Claude adapter owns the isolated `settingSources: []` default.
+
 ### Fixed
 
-- Scrub configured credential values from pi messages, errors, telemetry, and judge inputs, including short credentials and nested error causes.
+- Scrub configured credential values of at least eight characters from pi messages, errors, telemetry, and judge inputs, including nested error causes.
+- Keep scrubbed DOMExceptions as real DOMExceptions so telemetry span finalization cannot throw on abort errors.
 
 ## [0.3.1]
 

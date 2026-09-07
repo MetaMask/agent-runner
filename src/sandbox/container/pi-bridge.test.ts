@@ -108,17 +108,17 @@ describe('pi container bridge', () => {
     expect(run).not.toHaveBeenCalled();
   });
   it('scrubs thrown errors before writing protocol frames', async () => {
-    vi.stubEnv('LITELLM_API_KEY', 'short');
+    vi.stubEnv('LITELLM_API_KEY', 'short-secret');
     try {
       const result = await invoke(
         { version: 1, type: 'run', prompt: 'hi', options: {} },
         // eslint-disable-next-line require-yield -- Failure before the first message.
         async function* () {
-          throw new Error('short failure');
+          throw new Error('short-secret failure');
         },
       );
       expect(result.code).toBe(1);
-      expect(JSON.stringify(result.frames)).not.toContain('short');
+      expect(JSON.stringify(result.frames)).not.toContain('short-secret');
     } finally {
       vi.unstubAllEnvs();
     }

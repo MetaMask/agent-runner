@@ -679,6 +679,11 @@ describe('createClaudeAdapter', () => {
       expect(adapter.capabilities).toStrictEqual({ sandboxes: ['docker'] });
     });
 
+    it('defaults to isolated settingSources', () => {
+      const adapter = createClaudeAdapter();
+      expect(adapter.defaultOptions).toStrictEqual({ settingSources: [] });
+    });
+
     it('runs in-process and bypasses the sandbox machinery when no sandbox is set', async () => {
       claudeMocks.query.mockReturnValueOnce(yieldMessages([]));
 
@@ -855,7 +860,9 @@ describe('createClaudeAdapter', () => {
     it('closes the container on bridge success when cleanup is `on-success`', async () => {
       const handle = makeHandle();
       sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
-      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(makeBridge([]));
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([{ type: 'result', subtype: 'success' }]),
+      );
 
       const adapter = createClaudeAdapter();
       await drain(
@@ -868,6 +875,26 @@ describe('createClaudeAdapter', () => {
 
       expect(handle.close).toHaveBeenCalledTimes(1);
       expect(handle.unregisterCleanup).not.toHaveBeenCalled();
+    });
+
+    it('keeps the container when the result failed under cleanup `on-success`', async () => {
+      const handle = makeHandle();
+      sandboxMocks.createDockerSandbox.mockResolvedValueOnce(handle);
+      sandboxMocks.runDockerClaudeBridge.mockReturnValueOnce(
+        makeBridge([{ type: 'result', subtype: 'error_max_turns' }]),
+      );
+
+      const adapter = createClaudeAdapter();
+      await drain(
+        adapter.run({
+          prompt: 'sandboxed',
+          options: {},
+          sandbox: { ...baseSandbox, cleanup: 'on-success' },
+        }),
+      );
+
+      expect(handle.close).not.toHaveBeenCalled();
+      expect(handle.unregisterCleanup).toHaveBeenCalledTimes(1);
     });
 
     it('re-throws close errors when the bridge run succeeds but cleanup fails', async () => {

@@ -79,7 +79,7 @@ const result = await runner.runAgent({
 console.log(result.sessionId, result.totalCostUsd, result.durationMs);
 ```
 
-By default the runner passes `settingSources: []` to the Claude SDK for isolated settings. Callers can override that in `defaultOptions` or per-run `options` when they intentionally want SDK settings loaded from other sources.
+By default the Claude adapter passes `settingSources: []` to the SDK for isolated settings. Callers can override that in `defaultOptions` or per-run `options` when they intentionally want SDK settings loaded from other sources.
 
 ## Pi usage
 
@@ -140,13 +140,13 @@ Pi emits the same normalized messages and telemetry as Claude. Reaching `maxTurn
 
 ### Pi sandbox and judge behavior
 
-Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, that version must already be resolvable from the bridge directory. The Node version check applies inside the container, so a Node 20 host can still launch a supported pi container.
+Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, the runner performs no version check, so make sure the bridge directory already contains a compatible install. The Node version check applies inside the container, so a Node 20 host can still launch a supported pi container.
 
 Pi's default forwarded environment is `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`. An explicit `forwardEnv` list or `false` overrides it. Credentials are passed through the existing Docker environment-file mechanism, not serialized into query options. The existing Docker security caveats still apply: enabled tools can read credentials inside the container.
 
 Pi judging uses only a terminating `submit_judgment` tool and rejects caller tool customization. It inherits model settings, but not task tools or task turn limits. Its default limit is five turns. It uses the runner's sandbox; `judge(..., context, { sandbox: false, signal })` can override sandboxing and cancel the judge. A sandboxed judge starts its own container rather than reusing the task container.
 
-Claude judging and the legacy Claude fallback for custom adapters without `runStructured()` remain unchanged. To judge a transcript with another provider, use a separate runner. Custom adapters can implement `runStructured()`, `getStructuredDefaults()`, and `getRunMetadata()`. Set `defaultOptions: {}` on non-Claude adapters to opt out of the legacy `settingSources: []` default.
+Claude judging and the legacy Claude fallback for custom adapters without `runStructured()` remain unchanged. To judge a transcript with another provider, use a separate runner. Custom adapters can implement `runStructured()`, `getStructuredDefaults()`, and `getRunMetadata()`. Adapter `defaultOptions` are merged under per-run options; adapters that supply none change nothing.
 
 To run the local-protocol Docker smoke test after building:
 
@@ -422,7 +422,7 @@ const result = await runner.runAgent({
 | `shmSize`          | `string`                              | Size of `/dev/shm` (e.g. `512m`, `2g`).                                                                                                                  |
 | `unsafeDockerArgs` | `string[]`                            | Extra raw arguments forwarded to `docker run`. Not validated.                                                                                            |
 | `setupCommands`    | `string[]`                            | Shell commands executed inside the container before the agent starts. Useful for installing extra dependencies or seeding state.                         |
-| `cleanup`          | `'always' \| 'on-success' \| 'never'` | When to remove the container. Defaults to `'always'`. `'on-success'` keeps the container on failure for inspection.                                      |
+| `cleanup`          | `'always' \| 'on-success' \| 'never'` | When to remove the container. Defaults to `'always'`. `'on-success'` keeps the container unless the run completed with a successful result.              |
 | `bridge`           | `DockerSandboxBridgeConfig`           | Bridge runtime options: `install`, `nodeCommand`, `npmCommand`, `sdkVersion`. Defaults install the host's installed Claude Agent SDK version on the fly. |
 
 `SandboxConfig` is a discriminated union on `type`; today only `'docker'`

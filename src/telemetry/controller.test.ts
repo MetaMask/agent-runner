@@ -113,6 +113,9 @@ const createMockAdapter = (
   const runCalls: unknown[] = [];
   const adapter: ProviderAdapter = {
     name: 'mock',
+    // Mirror the Claude adapter's isolated-settings default so option-merging
+    // assertions exercise the shape a real adapter supplies.
+    defaultOptions: { settingSources: [] },
     /**
      * Mock adapter run generator.
      *
@@ -238,6 +241,7 @@ describe('telemetry lifecycle', () => {
     const runCalls: unknown[] = [];
     const adapter: ProviderAdapter<object, { value: bigint }> = {
       name: 'bigint-prompt',
+      defaultOptions: { settingSources: [] },
       /**
        * Captures the generic prompt without serializing it.
        *

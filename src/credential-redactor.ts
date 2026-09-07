@@ -1,5 +1,11 @@
 /**
- * Collects configured credential values without imposing a minimum length.
+ * Minimum credential value length eligible for scrubbing. Shorter values
+ * (flags like `true`, single digits) are too generic to redact safely.
+ */
+const MIN_CREDENTIAL_LENGTH = 8;
+
+/**
+ * Collects configured credential values of at least eight characters.
  *
  * @param env - Credential-bearing environment.
  * @returns A value-level string scrubber.
@@ -13,7 +19,8 @@ export function createCredentialScrubber(
         .filter(
           ([key, value]) =>
             /key|token|secret|password|authorization/iu.test(key) &&
-            Boolean(value),
+            value !== undefined &&
+            value.length >= MIN_CREDENTIAL_LENGTH,
         )
         .map(([, value]) => value as string),
     ),
@@ -51,6 +58,12 @@ export function scrubCredentials<Value>(
   }
   if (seen.has(value)) {
     return seen.get(value) as Value;
+  }
+  if (value instanceof DOMException) {
+    // Build a real DOMException. Copying an Error and swapping the prototype
+    // leaves the internal slots unset, so DOMException getters (`code`,
+    // `message`) throw and crash consumers such as OTel's `recordException`.
+    return new DOMException(scrub(value.message), value.name) as Value;
   }
   if (value instanceof Error) {
     const result = new Error(scrub(value.message));

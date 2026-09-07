@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-param, jsdoc/require-returns */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -12,6 +11,7 @@ import {
   DockerSandboxError,
   DockerSandboxProtocolError,
 } from '../../errors.js';
+import { PI_SDK_VERSION } from '../../pi-runtime.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   parseBridgeEvent,
@@ -62,9 +62,6 @@ export const MAX_BRIDGE_QUEUE_SIZE = 10_000;
  */
 export const BRIDGE_SDK_PACKAGE_NAME = '@anthropic-ai/claude-agent-sdk';
 
-/** Exact Pi runtime version locked by the package architecture. */
-export const PI_BRIDGE_SDK_VERSION = '0.83.0';
-
 /** Runtime-specific data consumed by the generic Docker bootstrap. */
 export type DockerBridgeRuntimeDescriptor = {
   /** Stable runtime identifier used in diagnostics. */
@@ -73,6 +70,11 @@ export type DockerBridgeRuntimeDescriptor = {
   packageName: string;
   /** Default bridge filename copied into the container. */
   remoteBridgeFile: string;
+  /**
+   * Where `remoteBridgeFile` (and `files`) resolve from, relative to this
+   * module: `container` for `dist/sandbox/container`, `dist` for the build root.
+   */
+  hostRoot: 'container' | 'dist';
   /** Resolves the exact install version when no explicit override is supplied. */
   resolveVersion: () => string | undefined;
   /** Optional minimum Node.js version required by the runtime. */
@@ -88,6 +90,7 @@ export const CLAUDE_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
   id: 'claude',
   packageName: BRIDGE_SDK_PACKAGE_NAME,
   remoteBridgeFile: DEFAULT_REMOTE_BRIDGE_FILE,
+  hostRoot: 'container',
   /** Resolves the installed Claude SDK version. */
   resolveVersion: readHostSdkVersion,
 };
@@ -97,11 +100,16 @@ export const PI_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
   id: 'pi',
   packageName: '@earendil-works/pi-coding-agent',
   remoteBridgeFile: 'sandbox/container/pi-bridge.mjs',
+  hostRoot: 'dist',
   files: ['pi-runtime.mjs', 'credential-redactor.mjs'],
-  /** Returns the architecture-locked Pi version. */
-  resolveVersion: () => PI_BRIDGE_SDK_VERSION,
+  /**
+   * Returns the architecture-locked Pi version.
+   *
+   * @returns The locked Pi SDK version.
+   */
+  resolveVersion: () => PI_SDK_VERSION,
   minNodeVersion: '22.19.0',
-  exactVersion: PI_BRIDGE_SDK_VERSION,
+  exactVersion: PI_SDK_VERSION,
 };
 
 /**
@@ -119,65 +127,29 @@ export function resolveDefaultBridgeHostPath(): string {
   return resolveBridgeHostPath(CLAUDE_BRIDGE_RUNTIME);
 }
 
-/** Resolves the built bridge path for a runtime descriptor. */
+/**
+ * Resolves the built bridge path for a runtime descriptor.
+ *
+ * @param runtime - Runtime descriptor naming the bridge file.
+ * @returns Absolute path to the compiled bridge script.
+ */
 export function resolveBridgeHostPath(
   runtime: DockerBridgeRuntimeDescriptor,
 ): string {
-  const here = fileURLToPath(import.meta.url);
-  return path.resolve(
-    path.dirname(here),
-    ...(runtime.files === undefined ? ['..', 'container'] : ['..', '..']),
-    runtime.remoteBridgeFile,
-  );
+  return path.join(resolveHostRoot(runtime.hostRoot), runtime.remoteBridgeFile);
 }
 
 /**
- * Input for {@link resolveBridgeSdkVersion}.
+ * Resolves the host directory a runtime's bridge files ship from.
+ *
+ * @param hostRoot - Root selector from the runtime descriptor.
+ * @returns Absolute path to the directory holding the built files.
  */
-export type ResolveBridgeSdkVersionInput = {
-  /** Normalized bridge configuration. */
-  config: NormalizedDockerSandboxConfig;
-  /**
-   * Test seam returning the host-installed SDK version when present.
-   * Production code falls back to {@link readHostSdkVersion}.
-   */
-  readHostSdkVersion?: () => string | undefined;
-};
-
-/**
- * Resolves the SDK version the bridge should install inside the
- * container.
- *
- * Resolution order:
- * 1. Explicit `sandbox.bridge.sdkVersion` if provided.
- * 2. Host-installed `@anthropic-ai/claude-agent-sdk/package.json`.
- *
- * The host `node_modules` tree is never copied into the container —
- * only the version string is borrowed to pin the in-container
- * `npm install`.
- *
- * @param input - Normalized config and an optional reader override.
- * @returns The exact version string suitable for `npm install`.
- * @throws {DockerSandboxError} When no version can be resolved.
- */
-export function resolveBridgeSdkVersion(
-  input: ResolveBridgeSdkVersionInput,
-): string {
-  const explicit = input.config.bridge.sdkVersion;
-  if (explicit !== undefined) {
-    return explicit;
-  }
-
-  const reader = input.readHostSdkVersion ?? readHostSdkVersion;
-  const detected = reader();
-  if (detected !== undefined) {
-    return detected;
-  }
-
-  throw new DockerSandboxError(
-    `Could not determine ${BRIDGE_SDK_PACKAGE_NAME} version: the host does not ` +
-      'have it installed and `sandbox.bridge.sdkVersion` is not set. ' +
-      'Install the SDK on the host or pin a version via `sandbox.bridge.sdkVersion`.',
+function resolveHostRoot(hostRoot: 'container' | 'dist'): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.resolve(
+    here,
+    ...(hostRoot === 'container' ? ['..', 'container'] : ['..', '..']),
   );
 }
 
@@ -245,8 +217,9 @@ export type BootstrapDockerClaudeBridgeInput = {
    */
   remoteBridgeFile?: string;
   /**
-   * Test seam returning the host-installed SDK version. Forwarded to
-   * {@link resolveBridgeSdkVersion}.
+   * Test seam returning the host-installed SDK version. When it returns
+   * `undefined`, bootstrap falls back to the runtime descriptor's
+   * `resolveVersion()`.
    */
   readHostSdkVersion?: () => string | undefined;
 };
@@ -297,7 +270,12 @@ export async function bootstrapDockerClaudeBridge(
   });
 }
 
-/** Bootstraps an arbitrary descriptor-defined SDK bridge. */
+/**
+ * Bootstraps an arbitrary descriptor-defined SDK bridge.
+ *
+ * @param input - Inputs and overrides, including the runtime descriptor.
+ * @returns The resolved remote bridge path and node command.
+ */
 export async function bootstrapDockerBridge(
   input: BootstrapDockerBridgeInput,
 ): Promise<BootstrapDockerClaudeBridgeResult> {
@@ -344,16 +322,18 @@ export async function bootstrapDockerBridge(
   }
 
   for (const file of input.runtime.files ?? []) {
-    await runner.run('docker', [
-      'cp',
-      path.resolve(
-        path.dirname(fileURLToPath(import.meta.url)),
-        '..',
-        '..',
-        file,
-      ),
-      `${sandbox.containerName}:${remoteBridgeDir}/${file}`,
-    ]);
+    try {
+      await runner.run('docker', [
+        'cp',
+        path.join(resolveHostRoot(input.runtime.hostRoot), file),
+        `${sandbox.containerName}:${remoteBridgeDir}/${file}`,
+      ]);
+    } catch (cause) {
+      throw wrapDockerSandboxError(
+        `Failed to copy runtime file ${file} into container \`${sandbox.containerName}\` at ${remoteBridgeDir}/${file}`,
+        cause,
+      );
+    }
   }
 
   const explicitVersion = input.config.bridge.sdkVersion;
@@ -500,7 +480,12 @@ export function runDockerClaudeBridge(
   return runDockerBridge({ ...input, runtime: CLAUDE_BRIDGE_RUNTIME });
 }
 
-/** Runs a descriptor-defined bridge using the unchanged protocol-v1 stream. */
+/**
+ * Runs a descriptor-defined bridge using the unchanged protocol-v1 stream.
+ *
+ * @param input - Run parameters, including the runtime descriptor.
+ * @returns An `AsyncIterable` over raw SDK messages.
+ */
 export function runDockerBridge(
   input: RunDockerBridgeInput,
 ): AsyncIterable<unknown> {
@@ -631,7 +616,8 @@ async function* createBridgeIterator(
   const abortController = new AbortController();
 
   /**
-   *
+   * Cancels the in-container docker exec and wakes the consumer when
+   * the caller's signal fires.
    */
   const cancel = (): void => {
     abortController.abort();
@@ -782,6 +768,7 @@ async function waitForBridgeEvent(holder: WakerHolder): Promise<void> {
  * @param containerName - Container to probe.
  * @param bridgeConfig - Normalized bridge config (for the node/npm
  * command overrides).
+ * @param runtime - Runtime descriptor providing the Node floor and id.
  */
 async function preflightNodeAndNpm(
   runner: DockerCommandRunner,
@@ -824,6 +811,7 @@ async function preflightNodeAndNpm(
  * @param command - Binary path or PATH-resolved name.
  * @param friendlyName - Display name used in the error message.
  * @param guidance - Remediation hint included in the error message.
+ * @returns The captured `--version` stdout.
  */
 async function preflightBinary(
   runner: DockerCommandRunner,
@@ -877,7 +865,13 @@ function buildBridgePackageJson(
   )}\n`;
 }
 
-/** Compares dotted Node versions without a semver runtime dependency. */
+/**
+ * Compares dotted Node versions without a semver runtime dependency.
+ *
+ * @param actualOutput - Raw `node --version` output.
+ * @param minimum - Dotted minimum version (e.g. `22.19.0`).
+ * @returns Whether the actual version satisfies the minimum.
+ */
 function isVersionAtLeast(actualOutput: string, minimum: string): boolean {
   const match = /v?(\d+)\.(\d+)\.(\d+)/u.exec(actualOutput.trim());
   if (!match) {

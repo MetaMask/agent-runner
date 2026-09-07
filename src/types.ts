@@ -294,7 +294,7 @@ export type ProviderAdapter<
 > = {
   /** Identifier for the provider (e.g. 'claude'). */
   name: string;
-  /** Provider defaults. Omitted retains legacy isolated Claude settings. */
+  /** Provider defaults merged under per-run options. Omitted supplies nothing. */
   defaultOptions?: Partial<TOptions>;
   /** Executes an agent run and yields normalized messages. */
   run: (config: RunConfig<TOptions, TPrompt>) => AsyncIterable<AgentMessage>;

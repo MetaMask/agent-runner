@@ -45,7 +45,10 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
           res.writeHead(reply.status, { 'Content-Type': 'application/json' });
           res.end(
             JSON.stringify({
-              error: { message: 'bad sk-test', type: 'invalid_request_error' },
+              error: {
+                message: 'bad sk-test-key',
+                type: 'invalid_request_error',
+              },
             }),
           );
           return;
@@ -78,7 +81,7 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
         throw new Error('Missing server address');
       }
       vi.stubEnv('LITELLM_BASE_URL', `http://127.0.0.1:${address.port}`);
-      vi.stubEnv('LITELLM_API_KEY', 'sk-test');
+      vi.stubEnv('LITELLM_API_KEY', 'sk-test-key');
     });
     afterEach(async () => {
       server.closeAllConnections();
@@ -173,14 +176,14 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
             rubric: 'Judge correctness.',
             scoreFields: [{ name: 'correctness', min: 0, max: 10 }],
           },
-          { taskPrompt: 'sk-test', status: 'sk-test' },
+          { taskPrompt: 'sk-test-key', status: 'sk-test-key' },
         );
         expect(verdict.scores.correctness).toBe(7);
         expect(requests).toHaveLength(1);
         expect(
           requests[0]?.tools.map((tool: any) => tool.function.name),
         ).toStrictEqual(['submit_judgment']);
-        expect(JSON.stringify(requests[0])).not.toContain('sk-test');
+        expect(JSON.stringify(requests[0])).not.toContain('sk-test-key');
       });
 
       it('cleans up when a judge message callback fails', async () => {
@@ -243,7 +246,7 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
           signal: controller.signal,
         });
         await vi.waitFor(() => expect(requests).toHaveLength(1));
-        controller.abort(new Error('cancel sk-test'));
+        controller.abort(new Error('cancel sk-test-key'));
         const result = await resultPromise;
         expect(result.isPartial).toBe(true);
         expect(result.error?.message).toBe('cancel [REDACTED]');
@@ -265,7 +268,7 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
       });
 
       it('returns an unsuccessful result for truncation and scrubs provider errors', async () => {
-        reply = { stop: 'length', text: 'partial sk-test' };
+        reply = { stop: 'length', text: 'partial sk-test-key' };
         const runner = createAgentRunner({
           adapter: createPiAdapter(),
           defaultOptions: { model: 'test', tools: [] },
@@ -278,7 +281,7 @@ describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
         reply = { status: 400 };
         const failed = await runner.runAgent({ prompt: 'hi' });
         expect(failed.resultMessage).toMatchObject({ success: false });
-        expect(JSON.stringify(failed)).not.toContain('sk-test');
+        expect(JSON.stringify(failed)).not.toContain('sk-test-key');
       });
 
       it('accepts a base URL that already ends in /v1', async () => {

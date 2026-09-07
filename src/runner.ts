@@ -175,8 +175,7 @@ export function createAgentRunner<
       runOptions: AgentRunOptions<TOptions, TPrompt>,
     ): Promise<AgentRunResult> => {
       const options = {
-        ...(adapter.defaultOptions ??
-          ({ settingSources: [] } as unknown as Partial<TOptions>)),
+        ...adapter.defaultOptions,
         ...config.defaultOptions,
         ...runOptions.options,
       };

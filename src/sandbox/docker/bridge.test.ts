@@ -4,6 +4,7 @@ import {
   DockerSandboxError,
   DockerSandboxProtocolError,
 } from '../../errors.js';
+import { PI_SDK_VERSION } from '../../pi-runtime.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   parseBridgeEvent,
@@ -11,15 +12,14 @@ import {
 } from './bridge-protocol.js';
 import {
   BRIDGE_SDK_PACKAGE_NAME,
+  CLAUDE_BRIDGE_RUNTIME,
   PI_BRIDGE_RUNTIME,
-  PI_BRIDGE_SDK_VERSION,
   DEFAULT_REMOTE_BRIDGE_DIR,
   DEFAULT_REMOTE_BRIDGE_FILE,
   MAX_BRIDGE_LINE_LENGTH,
   MAX_BRIDGE_QUEUE_SIZE,
   bootstrapDockerClaudeBridge,
   bootstrapDockerBridge,
-  resolveBridgeSdkVersion,
   resolveDefaultBridgeHostPath,
   runDockerClaudeBridge,
   runDockerBridge,
@@ -170,55 +170,9 @@ describe('resolveDefaultBridgeHostPath', () => {
     const resolved = resolveDefaultBridgeHostPath();
     expect(resolved).toMatch(/[/\\]container[/\\]claude-bridge\.mjs$/u);
   });
-});
 
-describe('resolveBridgeSdkVersion', () => {
-  it('returns the explicit override when provided', () => {
-    const config = makeConfig({ sdkVersion: '1.2.3' });
-    expect(
-      resolveBridgeSdkVersion({
-        config,
-        /**
-         *
-         */
-        readHostSdkVersion: () => '9.9.9',
-      }),
-    ).toBe('1.2.3');
-  });
-
-  it('falls back to the host-installed SDK version', () => {
-    const config = makeConfig();
-    expect(
-      resolveBridgeSdkVersion({
-        config,
-        /**
-         *
-         */
-        readHostSdkVersion: () => '0.2.138',
-      }),
-    ).toBe('0.2.138');
-  });
-
-  it('uses the default host SDK reader when no override is supplied', () => {
-    // Without the optional override, the function falls back to
-    // reading the host package.json via createRequire. We do not
-    // assert a specific version (it tracks the installed dep), only
-    // that the lookup succeeds in this repo.
-    const result = resolveBridgeSdkVersion({ config: makeConfig() });
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('throws when neither an override nor the host SDK can be located', () => {
-    expect(() =>
-      resolveBridgeSdkVersion({
-        config: makeConfig(),
-        /**
-         *
-         */
-        readHostSdkVersion: () => undefined,
-      }),
-    ).toThrow(/Could not determine .* version/u);
+  it('resolves the Claude SDK version from the host installation', () => {
+    expect(CLAUDE_BRIDGE_RUNTIME.resolveVersion()).toMatch(/^\d+\./u);
   });
 });
 
@@ -236,7 +190,7 @@ describe('bootstrapDockerClaudeBridge', () => {
     });
     expect(result.remoteBridgePath).toMatch(/pi-bridge\.mjs$/u);
     expect(calls.at(-1)?.args).toContain(
-      `@earendil-works/pi-coding-agent@${PI_BRIDGE_SDK_VERSION}`,
+      `@earendil-works/pi-coding-agent@${PI_SDK_VERSION}`,
     );
 
     await expect(
@@ -280,9 +234,31 @@ describe('bootstrapDockerClaudeBridge', () => {
     expect(copy?.args[1]).toMatch(/\/container\/pi-bridge\.mjs$/u);
     expect(copy?.args[2]).toMatch(/pi-bridge\.mjs$/u);
     expect(calls.at(-1)?.args).toContain(
-      `@earendil-works/pi-coding-agent@${PI_BRIDGE_SDK_VERSION}`,
+      `@earendil-works/pi-coding-agent@${PI_SDK_VERSION}`,
     );
   });
+
+  it('wraps runtime file copy failures in a DockerSandboxError', async () => {
+    const { runner } = makeStubRunner([
+      () => ({ stdout: 'v22.19.0\n', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '10.0.0\n', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '', stderr: '', exitCode: 0 }),
+      () => {
+        throw new Error('cp boom');
+      },
+    ]);
+
+    await expect(
+      bootstrapDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('ct-pi-file-copy'),
+        config: makeConfig(),
+        commandRunner: runner,
+      }),
+    ).rejects.toThrow(/Failed to copy runtime file pi-runtime\.mjs/u);
+  });
+
   it('executes preflight, mkdir, cp, package.json, and npm install in order', async () => {
     const { runner, calls } = makeStubRunner();
 
@@ -648,6 +624,7 @@ describe('pi Docker cancellation and bootstrap', () => {
           id: 'missing',
           packageName: 'missing',
           remoteBridgeFile: 'bridge.mjs',
+          hostRoot: 'dist',
           resolveVersion: () => undefined,
         },
         sandbox: makeHandle('pi'),
