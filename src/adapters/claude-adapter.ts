@@ -35,7 +35,20 @@ import { translateClaudeSdkMessages } from './claude-message-translator.js';
 export function createClaudeAdapter(): ProviderAdapter {
   return {
     name: 'claude',
+    // Isolated settings by default so the SDK does not read user or project
+    // configuration files unless a caller opts in via run options.
+    defaultOptions: { settingSources: [] },
     capabilities: { sandboxes: ['docker'] },
+    /**
+     * Describes the Claude run for telemetry.
+     *
+     * @param options - Claude options.
+     * @returns Model and turn limit.
+     */
+    getRunMetadata: (options) => ({
+      model: options.model ?? 'unknown',
+      maxTurns: options.maxTurns ?? 0,
+    }),
     /**
      * Runs the Claude query and yields translated agent messages.
      *
@@ -114,6 +127,7 @@ async function* runWithSandbox(
   let bridgeError: unknown;
   let bridgeFailed = false;
   let bridgeCompleted = false;
+  let resultSucceeded = false;
   let closeError: unknown;
   let closeFailed = false;
   try {
@@ -124,7 +138,12 @@ async function* runWithSandbox(
       request: { prompt: prepared.prompt, options: prepared.options },
     });
 
-    yield* translateClaudeSdkMessages(bridgeMessages);
+    for await (const message of translateClaudeSdkMessages(bridgeMessages)) {
+      if (message.type === 'result') {
+        resultSucceeded = message.success;
+      }
+      yield message;
+    }
     bridgeCompleted = true;
   } catch (cause) {
     bridgeError = cause;
@@ -133,7 +152,7 @@ async function* runWithSandbox(
     const consumerAborted = !bridgeCompleted && !bridgeFailed;
     if (
       consumerAborted ||
-      shouldCloseContainer(normalized.cleanup, bridgeCompleted)
+      shouldCloseContainer(normalized.cleanup, bridgeCompleted, resultSucceeded)
     ) {
       try {
         await handle.close();
@@ -157,7 +176,7 @@ async function* runWithSandbox(
 /**
  * Decides whether the sandbox container should be removed at the end
  * of a run based on the cleanup policy and whether the bridge run
- * completed naturally.
+ * completed naturally with a successful result.
  *
  * This function ONLY governs the non-abort cases. When the consumer
  * aborts iteration early (`break`, `iterator.return()`, or an
@@ -167,19 +186,21 @@ async function* runWithSandbox(
  * running.
  *
  * @param cleanup - Cleanup policy from the normalized sandbox config.
- * @param succeeded - Whether the bridge completed naturally without
+ * @param completed - Whether the bridge completed naturally without
  *   throwing and without being abandoned mid-stream.
+ * @param succeeded - Whether the run produced a successful result.
  * @returns Whether to call `handle.close()`.
  */
 function shouldCloseContainer(
   cleanup: 'always' | 'on-success' | 'never',
+  completed: boolean,
   succeeded: boolean,
 ): boolean {
   switch (cleanup) {
     case 'always':
       return true;
     case 'on-success':
-      return succeeded;
+      return completed && succeeded;
     case 'never':
       return false;
     default:

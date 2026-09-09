@@ -72,6 +72,9 @@ const createMockAdapter = (
   const runCalls: unknown[] = [];
   const adapter: ProviderAdapter = {
     name: 'mock',
+    // Mirror the Claude adapter's isolated-settings default so option-merging
+    // tests exercise the same shape a real adapter supplies.
+    defaultOptions: { settingSources: [] },
     /**
      * Mock run generator.
      *
@@ -100,6 +103,21 @@ describe('createAgentRunner', () => {
       {
         prompt: 'test prompt',
         options: { settingSources: [] },
+      },
+    ]);
+  });
+
+  it('passes empty options when the adapter defines no defaults', async () => {
+    const { adapter, runCalls } = createMockAdapter();
+    delete adapter.defaultOptions;
+    const runner = createAgentRunner({ adapter });
+
+    await runner.runAgent({ prompt: 'test prompt' });
+
+    expect(runCalls).toStrictEqual([
+      {
+        prompt: 'test prompt',
+        options: {},
       },
     ]);
   });
@@ -565,6 +583,7 @@ describe('createAgentRunner', () => {
         judgeConfig,
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -579,6 +598,7 @@ describe('createAgentRunner', () => {
         judgeRunResult,
         judgeConfig,
         context,
+        undefined,
         undefined,
       );
     });

@@ -4,6 +4,7 @@ import {
   DockerSandboxError,
   DockerSandboxProtocolError,
 } from '../../errors.js';
+import { PI_SDK_VERSION } from '../../pi-runtime.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   parseBridgeEvent,
@@ -11,14 +12,17 @@ import {
 } from './bridge-protocol.js';
 import {
   BRIDGE_SDK_PACKAGE_NAME,
+  CLAUDE_BRIDGE_RUNTIME,
+  PI_BRIDGE_RUNTIME,
   DEFAULT_REMOTE_BRIDGE_DIR,
   DEFAULT_REMOTE_BRIDGE_FILE,
   MAX_BRIDGE_LINE_LENGTH,
   MAX_BRIDGE_QUEUE_SIZE,
   bootstrapDockerClaudeBridge,
-  resolveBridgeSdkVersion,
+  bootstrapDockerBridge,
   resolveDefaultBridgeHostPath,
   runDockerClaudeBridge,
+  runDockerBridge,
 } from './bridge.js';
 import type {
   DockerCommandResult,
@@ -166,59 +170,95 @@ describe('resolveDefaultBridgeHostPath', () => {
     const resolved = resolveDefaultBridgeHostPath();
     expect(resolved).toMatch(/[/\\]container[/\\]claude-bridge\.mjs$/u);
   });
-});
 
-describe('resolveBridgeSdkVersion', () => {
-  it('returns the explicit override when provided', () => {
-    const config = makeConfig({ sdkVersion: '1.2.3' });
-    expect(
-      resolveBridgeSdkVersion({
-        config,
-        /**
-         *
-         */
-        readHostSdkVersion: () => '9.9.9',
-      }),
-    ).toBe('1.2.3');
-  });
-
-  it('falls back to the host-installed SDK version', () => {
-    const config = makeConfig();
-    expect(
-      resolveBridgeSdkVersion({
-        config,
-        /**
-         *
-         */
-        readHostSdkVersion: () => '0.2.138',
-      }),
-    ).toBe('0.2.138');
-  });
-
-  it('uses the default host SDK reader when no override is supplied', () => {
-    // Without the optional override, the function falls back to
-    // reading the host package.json via createRequire. We do not
-    // assert a specific version (it tracks the installed dep), only
-    // that the lookup succeeds in this repo.
-    const result = resolveBridgeSdkVersion({ config: makeConfig() });
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('throws when neither an override nor the host SDK can be located', () => {
-    expect(() =>
-      resolveBridgeSdkVersion({
-        config: makeConfig(),
-        /**
-         *
-         */
-        readHostSdkVersion: () => undefined,
-      }),
-    ).toThrow(/Could not determine .* version/u);
+  it('resolves the Claude SDK version from the host installation', () => {
+    expect(CLAUDE_BRIDGE_RUNTIME.resolveVersion()).toMatch(/^\d+\./u);
   });
 });
 
 describe('bootstrapDockerClaudeBridge', () => {
+  it('bootstraps the locked Pi descriptor and enforces its version and minimum Node', async () => {
+    const { runner, calls } = makeStubRunner([
+      () => ({ stdout: 'v22.19.0\n', stderr: '', exitCode: 0 }),
+    ]);
+    const result = await bootstrapDockerBridge({
+      runtime: PI_BRIDGE_RUNTIME,
+      sandbox: makeHandle('ct-pi'),
+      config: makeConfig(),
+      commandRunner: runner,
+      bridgeHostPath: '/host/pi-bridge.mjs',
+    });
+    expect(result.remoteBridgePath).toMatch(/pi-bridge\.mjs$/u);
+    expect(calls.at(-1)?.args).toContain(
+      `@earendil-works/pi-coding-agent@${PI_SDK_VERSION}`,
+    );
+
+    await expect(
+      bootstrapDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('ct-old'),
+        config: makeConfig(),
+        commandRunner: makeStubRunner([
+          () => ({ stdout: 'v22.18.0\n', stderr: '', exitCode: 0 }),
+        ]).runner,
+        bridgeHostPath: '/host/pi-bridge.mjs',
+      }),
+    ).rejects.toThrow(/requires Node\.js >=22\.19\.0/u);
+
+    await expect(
+      bootstrapDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('ct-drift'),
+        config: makeConfig({ sdkVersion: '0.82.0' }),
+        commandRunner: makeStubRunner([
+          () => ({ stdout: 'v24.0.0\n', stderr: '', exitCode: 0 }),
+        ]).runner,
+        bridgeHostPath: '/host/pi-bridge.mjs',
+      }),
+    ).rejects.toThrow(/requires .*@0\.83\.0/u);
+  });
+
+  it('defaults Pi bootstrap to the built Pi bridge host path', async () => {
+    const { runner, calls } = makeStubRunner([
+      () => ({ stdout: 'v22.19.0\n', stderr: '', exitCode: 0 }),
+    ]);
+    await bootstrapDockerBridge({
+      runtime: PI_BRIDGE_RUNTIME,
+      sandbox: makeHandle('ct-pi-default'),
+      config: makeConfig(),
+      commandRunner: runner,
+    });
+    const copy = calls.find(
+      (call) => call.command === 'docker' && call.args[0] === 'cp',
+    );
+    expect(copy?.args[1]).toMatch(/\/container\/pi-bridge\.mjs$/u);
+    expect(copy?.args[2]).toMatch(/pi-bridge\.mjs$/u);
+    expect(calls.at(-1)?.args).toContain(
+      `@earendil-works/pi-coding-agent@${PI_SDK_VERSION}`,
+    );
+  });
+
+  it('wraps runtime file copy failures in a DockerSandboxError', async () => {
+    const { runner } = makeStubRunner([
+      () => ({ stdout: 'v22.19.0\n', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '10.0.0\n', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '', stderr: '', exitCode: 0 }),
+      () => ({ stdout: '', stderr: '', exitCode: 0 }),
+      () => {
+        throw new Error('cp boom');
+      },
+    ]);
+
+    await expect(
+      bootstrapDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('ct-pi-file-copy'),
+        config: makeConfig(),
+        commandRunner: runner,
+      }),
+    ).rejects.toThrow(/Failed to copy runtime file pi-runtime\.mjs/u);
+  });
+
   it('executes preflight, mkdir, cp, package.json, and npm install in order', async () => {
     const { runner, calls } = makeStubRunner();
 
@@ -556,6 +596,68 @@ describe('bootstrapDockerClaudeBridge', () => {
         readHostSdkVersion: () => '0.2.99',
       }),
     ).rejects.toThrow(/install bridge runtime.*ct-npm.*npm crash/u);
+  });
+});
+
+describe('pi Docker cancellation and bootstrap', () => {
+  it.each(['v24.0.0', 'v22.19.0'])(
+    'preflights pi Node version %s',
+    async (version) => {
+      const { runner, calls } = makeStubRunner([
+        () => ({ stdout: version, stderr: '', exitCode: 0 }),
+      ]);
+      const promise = bootstrapDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('pi'),
+        config: makeConfig(),
+        commandRunner: runner,
+      });
+      await promise;
+      expect(calls.filter((call) => call.args[0] === 'cp')).toHaveLength(3);
+    },
+  );
+  it('rejects a runtime whose SDK version cannot be resolved', async () => {
+    const { runner } = makeStubRunner();
+    await expect(
+      bootstrapDockerBridge({
+        runtime: {
+          id: 'missing',
+          packageName: 'missing',
+          remoteBridgeFile: 'bridge.mjs',
+          hostRoot: 'dist',
+          resolveVersion: () => undefined,
+        },
+        sandbox: makeHandle('pi'),
+        config: makeConfig(),
+        commandRunner: runner,
+      }),
+    ).rejects.toThrow('Could not determine');
+  });
+  it('cancels a pending docker exec through the caller signal', async () => {
+    const controller = new AbortController();
+    const { runner } = makeStubRunner([
+      async (_command, _args, _options) => {
+        controller.abort(new Error('cancelled'));
+        return { stdout: '', stderr: '', exitCode: 0 };
+      },
+    ]);
+    const error = await iterate(
+      runDockerBridge({
+        runtime: PI_BRIDGE_RUNTIME,
+        sandbox: makeHandle('pi'),
+        config: makeConfig(),
+        commandRunner: runner,
+        request: { prompt: 'hi', options: {} },
+        signal: controller.signal,
+        preparedBridge: {
+          remoteBridgePath: '/bridge',
+          nodeCommand: 'node',
+          remoteBridgeDir: '/tmp',
+        },
+      }),
+      [],
+    );
+    expect((error as Error).message).toBe('cancelled');
   });
 });
 
