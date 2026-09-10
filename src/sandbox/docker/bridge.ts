@@ -101,7 +101,7 @@ export const PI_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
   packageName: '@earendil-works/pi-coding-agent',
   remoteBridgeFile: 'sandbox/container/pi-bridge.mjs',
   hostRoot: 'dist',
-  files: ['pi-runtime.mjs', 'credential-redactor.mjs'],
+  files: ['pi-runtime.mjs', 'credential-redactor.mjs', 'message-parser.mjs'],
   /**
    * Returns the architecture-locked Pi version.
    *
@@ -679,7 +679,7 @@ async function* createBridgeIterator(
           continue;
         }
         if (event.type === 'error') {
-          const named = event.error.name || 'Error';
+          const named = scrubCredentials(event.error.name || 'Error');
           const message = scrubCredentials(
             `Docker bridge for container \`${containerName}\` reported an error: ${named}: ${event.error.message}`,
           );

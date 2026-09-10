@@ -1,6 +1,7 @@
 import { createClaudeAdapter } from './adapters/claude-adapter.js';
 import {
   AgentRunnerError,
+  JudgeError,
   MessageHandlerError,
   SandboxConfigurationError,
 } from './errors.js';
@@ -288,6 +289,15 @@ export function createAgentRunner<
       context?: JudgeContext,
       options?: JudgeOptions,
     ): Promise<JudgeResult> => {
+      if (
+        adapter.runStructured === undefined &&
+        adapter.name !== 'claude' &&
+        judgeConfig.queryOptions !== undefined
+      ) {
+        throw new JudgeError(
+          `Adapter \`${adapter.name}\` must implement runStructured() to accept judge queryOptions. Use a separate Claude runner for Claude judge options.`,
+        );
+      }
       const structuredDefaults = adapter.getStructuredDefaults
         ? adapter.getStructuredDefaults(config.defaultOptions ?? {})
         : {};

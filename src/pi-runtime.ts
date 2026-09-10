@@ -402,6 +402,7 @@ export async function* runPiSession(
   const started = Date.now();
   const toolStarts = new Map<string, number>();
   const queue: AgentMessage[] = [];
+  let queuedProgressId: string | undefined;
   let wake: (() => void) | undefined;
   let settled = false;
   let taskError: Error | undefined;
@@ -436,13 +437,21 @@ export async function* runPiSession(
      * Buffers a scrubbed message, aborting on overflow.
      *
      * @param message - Normalized runtime message.
+     * @param toolCallId - Identity for coalescing adjacent progress updates.
      */
-    const push = (message: AgentMessage): void => {
-      if (queue.length >= 10000) {
+    const push = (message: AgentMessage, toolCallId?: string): void => {
+      if (
+        message.type === 'tool_progress' &&
+        queue.at(-1)?.type === 'tool_progress' &&
+        queuedProgressId === toolCallId
+      ) {
+        queue[queue.length - 1] = scrubCredentials(message, scrub);
+      } else if (queue.length >= 10000) {
         taskError ??= new Error('Pi event queue exceeded 10000 messages.');
         cancel();
       } else {
         queue.push(scrubCredentials(message, scrub));
+        queuedProgressId = toolCallId;
       }
       notify();
     };
@@ -510,12 +519,16 @@ export async function* runPiSession(
       } else if (event.type === 'tool_execution_update') {
         const start = toolStarts.get(event.toolCallId);
         if (start !== undefined) {
-          push({
-            type: 'tool_progress',
-            toolName: event.toolName,
-            elapsedSeconds: (Date.now() - start) / 1000,
-            raw: event,
-          });
+          // Updates contain cumulative output snapshots. Only the terminal
+          // tool_result retains output; progress is a lightweight heartbeat.
+          push(
+            {
+              type: 'tool_progress',
+              toolName: event.toolName,
+              elapsedSeconds: (Date.now() - start) / 1000,
+            },
+            event.toolCallId,
+          );
         }
       } else if (event.type === 'tool_execution_end') {
         toolStarts.delete(event.toolCallId);

@@ -123,7 +123,7 @@ describe('pi adapter', () => {
         (await setup([message]).runAgent({ prompt: 'hi' })).error?.message,
       ).toBe('Invalid pi bridge message.');
     });
-    it('accepts each emitted message variant and maps the workspace cwd', async () => {
+    it('accepts each emitted message variant and inherits the container cwd', async () => {
       const messages = [
         {
           type: 'generation',
@@ -159,9 +159,31 @@ describe('pi adapter', () => {
         sandbox: { type: 'docker' },
       });
       await runner.runAgent({ prompt: 'hi' });
+      expect(
+        mocks.bridge.mock.calls.at(-1)?.[0].request.options.cwd,
+      ).toBeUndefined();
+    });
+    it('preserves mapped package cwd when a container workdir is set', async () => {
+      const result = await setup().runAgent({
+        prompt: 'hi',
+        options: { cwd: '/repo/packages/a' },
+        sandbox: {
+          type: 'docker',
+          workspace: { hostPath: '/repo' },
+          workdir: '/workspace',
+        },
+      });
+      expect(result.error).toBeUndefined();
       expect(mocks.bridge.mock.calls.at(-1)?.[0].request.options.cwd).toBe(
-        '/workspace',
+        '/workspace/packages/a',
       );
+    });
+    it('inherits an explicit workdir with no workspace or cwd', async () => {
+      expect((await setup().runAgent({ prompt: 'hi' })).error).toBeUndefined();
+      expect(mocks.create.mock.calls.at(-1)?.[0].workdir).toBe('/task');
+      expect(
+        mocks.bridge.mock.calls.at(-1)?.[0].request.options.cwd,
+      ).toBeUndefined();
     });
     it('does not mask provider failures with cleanup failures', async () => {
       const runner = setup();
@@ -222,8 +244,8 @@ describe('pi adapter', () => {
       expect(result.error).toBeUndefined();
       expect(mocks.direct).not.toHaveBeenCalled();
       expect(mocks.bridge.mock.calls[0]?.[0]).toMatchObject({
-        request: { prompt: 'hi', options: { model: 'test', cwd: '/task' } },
-        config: { env: { LITELLM_API_KEY: 'key' } },
+        request: { prompt: 'hi', options: { model: 'test' } },
+        config: { env: { LITELLM_API_KEY: 'key' }, workdir: '/task' },
       });
       expect(mocks.bridge.mock.calls[0]?.[0].config.env).not.toHaveProperty(
         'ANTHROPIC_API_KEY',

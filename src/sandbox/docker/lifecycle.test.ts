@@ -664,6 +664,48 @@ describe('createDockerSandbox', () => {
   });
 
   describe('start failure', () => {
+    it.each(['always', 'on-success', 'never'] as const)(
+      'removes a possibly created container after aborted startup under %s',
+      async (cleanup) => {
+        const abort = new DOMException('cancelled', 'AbortError');
+        const cause = new DockerSandboxError('spawn aborted', { cause: abort });
+        const { runner, calls } = makeStubRunner([
+          () => {
+            throw cause;
+          },
+          () => {
+            throw new Error('secondary removal failure');
+          },
+        ]);
+        const pending = createDockerSandbox(makeConfig({ cleanup }), {
+          commandRunner: runner,
+          containerName: 'cancelled-start',
+        });
+        await expect(pending).rejects.toMatchObject({ cause });
+        expect(calls.at(-1)?.args).toStrictEqual([
+          'rm',
+          '-f',
+          'cancelled-start',
+        ]);
+        expect(getActiveContainersForTesting()).not.toContain(
+          'cancelled-start',
+        );
+      },
+    );
+    it('also removes containers for an unwrapped startup AbortError', async () => {
+      const { runner, calls } = makeStubRunner([
+        () => {
+          throw new DOMException('cancelled', 'AbortError');
+        },
+      ]);
+      await expect(
+        createDockerSandbox(makeConfig(), {
+          commandRunner: runner,
+          containerName: 'direct-abort',
+        }),
+      ).rejects.toThrow('cancelled');
+      expect(calls.at(-1)?.args).toStrictEqual(['rm', '-f', 'direct-abort']);
+    });
     it('wraps docker run errors in a DockerSandboxError and does not register the container', async () => {
       const { runner } = makeStubRunner([
         () => {

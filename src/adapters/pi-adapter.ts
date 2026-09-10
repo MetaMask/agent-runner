@@ -18,6 +18,7 @@ import {
   normalizeDockerSandboxConfig,
   prepareDockerSandboxRequest,
 } from '../sandbox/docker/options.js';
+import { shouldCloseSandbox } from '../sandbox/docker/utils.js';
 import type { AgentMessage, ProviderAdapter, RunConfig } from '../types.js';
 import type { PiQueryOptions } from './pi-types.js';
 
@@ -110,15 +111,6 @@ async function* runPi(
       options: { ...options },
       sandbox: normalized,
     });
-    // Respect an explicit workdir; otherwise use the mapped workspace cwd.
-    if (normalized.workdir !== undefined) {
-      prepared.options.cwd = normalized.workdir;
-    } else if (
-      prepared.options.cwd === undefined &&
-      normalized.workspace !== false
-    ) {
-      prepared.options.cwd = normalized.workspace.containerPath;
-    }
     if (structured !== undefined) {
       delete prepared.options.tools;
       prepared.options.structured = structured;
@@ -184,10 +176,12 @@ async function* runPi(
       throw cause;
     } finally {
       if (
-        (!completed && !failed) ||
-        config.signal?.aborted ||
-        normalized.cleanup === 'always' ||
-        (normalized.cleanup === 'on-success' && succeeded && completed)
+        shouldCloseSandbox(normalized.cleanup, {
+          completed,
+          failed,
+          succeeded,
+          aborted: config.signal?.aborted ?? false,
+        })
       ) {
         try {
           await handle.close();

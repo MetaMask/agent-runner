@@ -148,7 +148,9 @@ Pi's default forwarded environment is `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `HT
 
 Pi judging uses only a terminating `submit_judgment` tool and rejects caller tool customization. It inherits model settings, but not task tools or task turn limits. Its default limit is five turns. It uses the runner's sandbox; `judge(..., context, { sandbox: false, signal })` can override sandboxing and cancel the judge. A sandboxed judge starts its own container rather than reusing the task container.
 
-Claude judging and the legacy Claude fallback for custom adapters without `runStructured()` remain unchanged. To judge a transcript with another provider, use a separate runner. Custom adapters can implement `runStructured()`, `getStructuredDefaults()`, and `getRunMetadata()`. Adapter `defaultOptions` are merged under per-run options; adapters that supply none change nothing.
+Claude judging remains unchanged. Custom adapters without `runStructured()` can still use the legacy Claude judge with default options, but supplying `queryOptions` now throws rather than forwarding provider-native options to Claude. Use a separate Claude runner to customize that fallback, or implement `runStructured()` for provider-owned judging. Custom adapters can also implement `getStructuredDefaults()` and `getRunMetadata()`.
+
+Migration for custom Claude-backed adapters: the runner no longer injects `settingSources: []`. Add `defaultOptions: { settingSources: [] }` to your adapter to preserve SDK-settings isolation. Without it, the SDK may load user/project settings and hooks. Adapter defaults are merged under runner defaults and per-run options; the built-in Claude adapter retains its isolated default.
 
 To run the local-protocol Docker smoke test after building:
 
@@ -279,6 +281,12 @@ agent-runner (root session span)
 ```
 
 When `redact: true` is set on telemetry config, prompts and tool I/O are replaced with `[REDACTED]` in spans. Sensitive keys (`password`, `secret`, `srp`, `mnemonic`, `privatekey`, `token`, `apikey`, etc.) are recursively redacted from tool inputs regardless of the redact flag.
+
+#### Automatic credential scrubbing
+
+Pi messages and errors, Docker bridge execution errors, and judge inputs scrub exact environment values of at least eight characters when their variable names contain a known sensitive fragment. These include the sensitive-key list above plus `key`, `pass`, `auth`, `bearer`, and `cookie`, covering names such as `AI_CLI_SRP`, `SEED_PHRASE`, and `MNEMONIC`. Pi output scrubbing occurs before message callbacks, result collection, and message telemetry.
+
+This is a name-based heuristic, not a guarantee that all secrets are removed. Short values, unrecognized variable names, transformed/encoded values, and secrets unavailable to the scrubbing process are not covered. The telemetry redactor below remains useful for application-specific values and span inputs, including task prompts. Key-based redaction hides values under sensitive object keys; automatic scrubbing removes recognized environment values even inside free-form output.
 
 #### Value-level redaction
 

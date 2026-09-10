@@ -613,7 +613,7 @@ describe('pi Docker cancellation and bootstrap', () => {
         commandRunner: runner,
       });
       await promise;
-      expect(calls.filter((call) => call.args[0] === 'cp')).toHaveLength(3);
+      expect(calls.filter((call) => call.args[0] === 'cp')).toHaveLength(4);
     },
   );
   it('rejects a runtime whose SDK version cannot be resolved', async () => {
@@ -695,6 +695,58 @@ describe('runDockerClaudeBridge', () => {
     ]);
   }
 
+  it.each(['stderr', 'remote error', 'remote stack', 'rejection'])(
+    'scrubs configured credentials from Claude bridge %s',
+    async (source) => {
+      const secret = 'wallet-credential-value';
+      const config = makeConfig();
+      config.env = { AI_CLI_SRP: secret };
+      const lines = source.startsWith('remote')
+        ? [
+            serializeBridgeEvent({
+              version: BRIDGE_PROTOCOL_VERSION,
+              type: 'error',
+              error: {
+                name: `RemoteError ${secret}`,
+                message: `failed ${secret}`,
+                ...(source === 'remote stack'
+                  ? { stack: `stack ${secret}` }
+                  : {}),
+              },
+            }),
+          ]
+        : [];
+      const { runner } =
+        source === 'rejection'
+          ? makeStubRunner([
+              () => {
+                throw new Error(`failed ${secret}`, {
+                  cause: new Error(secret),
+                });
+              },
+            ])
+          : makeStreamingRunner(lines, 1, `stderr ${secret}`);
+      const error = await iterate(
+        runDockerClaudeBridge({
+          sandbox: makeHandle('ct-secrets'),
+          config,
+          commandRunner: runner,
+          request: { prompt: 'hi', options: {} },
+          preparedBridge,
+        }),
+        [],
+      );
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('[REDACTED]');
+      let current = error as Error | undefined;
+      while (current !== undefined) {
+        expect(current.message).not.toContain(secret);
+        expect(current.name).not.toContain(secret);
+        expect(current.stack).not.toContain(secret);
+        current = current.cause as Error | undefined;
+      }
+    },
+  );
   it('yields raw SDK messages in order and completes on done', async () => {
     const lines = [
       serializeBridgeEvent({

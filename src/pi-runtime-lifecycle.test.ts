@@ -226,6 +226,87 @@ describe('pi lifecycle', () => {
       clock.mockRestore();
     }
   });
+  it('coalesces queued heartbeats by call id without retaining output or arguments', async () => {
+    const fake = fakeSession((emit) => {
+      for (const toolCallId of ['first', 'second']) {
+        emit({
+          type: 'tool_execution_start',
+          toolCallId,
+          toolName: 'bash',
+          args: {},
+        });
+        for (let index = 0; index < 10001; index += 1) {
+          emit({
+            type: 'tool_execution_update',
+            toolCallId,
+            toolName: 'bash',
+            args: { command: 'large command' },
+            partialResult: {
+              content: [{ type: 'text', text: 'x'.repeat(50 * 1024) }],
+            },
+          });
+        }
+        if (toolCallId === 'first') {
+          emit(assistant('stop', 'between calls'));
+        }
+      }
+      emit({
+        type: 'tool_execution_end',
+        toolCallId: 'second',
+        toolName: 'bash',
+        result: { content: [{ type: 'text', text: 'final output' }] },
+        isError: false,
+      });
+      emit(assistant());
+    });
+    const messages = await collect(
+      runPiSession('hi', { model: 'x' }, undefined, undefined, fake.factory),
+    );
+    const progress = messages.filter(
+      (message) => message.type === 'tool_progress',
+    );
+    expect(progress).toHaveLength(2);
+    expect(progress.every((message) => message.raw === undefined)).toBe(true);
+    expect(messages.map((message) => message.type)).toStrictEqual([
+      'init',
+      'tool_progress',
+      'generation',
+      'tool_progress',
+      'tool_result',
+      'generation',
+      'result',
+    ]);
+    expect(
+      messages.find((message) => message.type === 'tool_result'),
+    ).toMatchObject({ content: 'final output' });
+    expect(fake.abort).not.toHaveBeenCalled();
+  });
+  it('does not coalesce adjacent progress from different calls with the same tool name', async () => {
+    const fake = fakeSession((emit) => {
+      for (const toolCallId of ['first', 'second']) {
+        emit({
+          type: 'tool_execution_start',
+          toolCallId,
+          toolName: 'bash',
+          args: {},
+        });
+        emit({
+          type: 'tool_execution_update',
+          toolCallId,
+          toolName: 'bash',
+          args: {},
+          partialResult: {},
+        });
+      }
+      emit(assistant());
+    });
+    const messages = await collect(
+      runPiSession('hi', { model: 'x' }, undefined, undefined, fake.factory),
+    );
+    expect(
+      messages.filter((message) => message.type === 'tool_progress'),
+    ).toHaveLength(2);
+  });
   it('bounds queued messages and aborts an overflowing producer', async () => {
     const fake = fakeSession((emit) => {
       for (let index = 0; index < 10002; index += 1) {

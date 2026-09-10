@@ -1,6 +1,38 @@
 import { DockerSandboxError } from '../../errors.js';
 
 /**
+ * Removes abandoned or cancelled runs regardless of retention policy.
+ *
+ * @param cleanup - Configured retention policy.
+ * @param outcome - Bridge completion, failure, result, and cancellation state.
+ * @param outcome.completed - Whether iteration completed naturally.
+ * @param outcome.failed - Whether execution threw.
+ * @param outcome.succeeded - Whether the agent reported success.
+ * @param outcome.aborted - Whether caller cancellation was requested.
+ * @returns Whether to remove the sandbox.
+ */
+export function shouldCloseSandbox(
+  cleanup: 'always' | 'on-success' | 'never',
+  outcome: {
+    /** Bridge iteration completed naturally. */
+    completed: boolean;
+    /** Execution threw an error. */
+    failed: boolean;
+    /** Agent reported a successful result. */
+    succeeded: boolean;
+    /** Caller requested cancellation. */
+    aborted: boolean;
+  },
+): boolean {
+  return (
+    outcome.aborted ||
+    (!outcome.completed && !outcome.failed) ||
+    cleanup === 'always' ||
+    (cleanup === 'on-success' && outcome.completed && outcome.succeeded)
+  );
+}
+
+/**
  * Maximum number of characters included in a stderr excerpt inside
  * error messages. Longer output is truncated with an ellipsis.
  */

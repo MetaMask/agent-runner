@@ -277,6 +277,7 @@ export async function executeJudge<
  */
 function formatTranscript(runResult: AgentRunResult): string {
   return runResult.messages
+    .filter((message) => message.type !== 'tool_progress')
     .map(
       (message, index) =>
         `[${String(index)}] ${message.type}: ${summarizeMessage(message)}`,
@@ -312,8 +313,6 @@ function summarizeMessage(message: AgentMessage): string {
         : `error: ${escapeXml(message.error ?? 'unknown')}`;
     case 'system':
       return message.subtype;
-    case 'tool_progress':
-      return `${message.toolName} (${String(message.elapsedSeconds)}s)`;
     case 'tool_use_summary':
       return escapeXml(message.summary);
     case 'rate_limit':

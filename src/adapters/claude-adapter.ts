@@ -7,6 +7,7 @@ import {
   normalizeDockerSandboxConfig,
   prepareDockerSandboxRequest,
 } from '../sandbox/docker/options.js';
+import { shouldCloseSandbox } from '../sandbox/docker/utils.js';
 import type {
   AgentMessage,
   DockerSandboxConfig,
@@ -149,10 +150,13 @@ async function* runWithSandbox(
     bridgeError = cause;
     bridgeFailed = true;
   } finally {
-    const consumerAborted = !bridgeCompleted && !bridgeFailed;
     if (
-      consumerAborted ||
-      shouldCloseContainer(normalized.cleanup, bridgeCompleted, resultSucceeded)
+      shouldCloseSandbox(normalized.cleanup, {
+        completed: bridgeCompleted,
+        failed: bridgeFailed,
+        succeeded: resultSucceeded,
+        aborted: false,
+      })
     ) {
       try {
         await handle.close();
@@ -170,40 +174,5 @@ async function* runWithSandbox(
   }
   if (closeFailed) {
     throw closeError;
-  }
-}
-
-/**
- * Decides whether the sandbox container should be removed at the end
- * of a run based on the cleanup policy and whether the bridge run
- * completed naturally with a successful result.
- *
- * This function ONLY governs the non-abort cases. When the consumer
- * aborts iteration early (`break`, `iterator.return()`, or an
- * exception thrown inside the consumer's `for await` body), the
- * caller closes the container unconditionally regardless of the
- * cleanup policy, because the in-container process may still be
- * running.
- *
- * @param cleanup - Cleanup policy from the normalized sandbox config.
- * @param completed - Whether the bridge completed naturally without
- *   throwing and without being abandoned mid-stream.
- * @param succeeded - Whether the run produced a successful result.
- * @returns Whether to call `handle.close()`.
- */
-function shouldCloseContainer(
-  cleanup: 'always' | 'on-success' | 'never',
-  completed: boolean,
-  succeeded: boolean,
-): boolean {
-  switch (cleanup) {
-    case 'always':
-      return true;
-    case 'on-success':
-      return completed && succeeded;
-    case 'never':
-      return false;
-    default:
-      return true;
   }
 }

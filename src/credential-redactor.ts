@@ -1,3 +1,14 @@
+import { SENSITIVE_KEYS } from './message-parser.js';
+
+const CREDENTIAL_KEYS = [
+  ...SENSITIVE_KEYS,
+  'key',
+  'pass',
+  'auth',
+  'bearer',
+  'cookie',
+];
+
 /**
  * Minimum credential value length eligible for scrubbing. Shorter values
  * (flags like `true`, single digits) are too generic to redact safely.
@@ -18,7 +29,9 @@ export function createCredentialScrubber(
       Object.entries(env)
         .filter(
           ([key, value]) =>
-            /key|token|secret|password|authorization/iu.test(key) &&
+            CREDENTIAL_KEYS.some((fragment) =>
+              key.toLowerCase().includes(fragment),
+            ) &&
             value !== undefined &&
             value.length >= MIN_CREDENTIAL_LENGTH,
         )
@@ -79,6 +92,27 @@ export function scrubCredentials<Value>(
     }
     if (value.cause !== undefined) {
       result.cause = scrubCredentials(value.cause, scrub, seen);
+    }
+    if (value instanceof AggregateError) {
+      Object.defineProperty(result, 'errors', {
+        value: scrubCredentials(value.errors, scrub, seen),
+        configurable: true,
+        writable: true,
+      });
+    }
+    for (const [key, entry] of Object.entries(value)) {
+      if (
+        ['message', 'name', 'stack', 'cause'].includes(key) ||
+        (key === 'errors' && value instanceof AggregateError)
+      ) {
+        continue;
+      }
+      Object.defineProperty(result, key, {
+        value: scrubCredentials(entry, scrub, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     return result as Value;
   }

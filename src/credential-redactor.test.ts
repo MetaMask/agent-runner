@@ -5,6 +5,7 @@ import {
   scrubCredentials,
 } from './credential-redactor.js';
 import { DockerSandboxError } from './errors.js';
+import { SENSITIVE_KEYS } from './message-parser.js';
 
 describe('credential redaction', () => {
   it('redacts credential values of at least eight characters and keeps shorter values', () => {
@@ -22,6 +23,60 @@ describe('credential redaction', () => {
     expect(createCredentialScrubber({})('unchanged')).toBe('unchanged');
   });
 
+  it.each([...SENSITIVE_KEYS, 'pass', 'auth', 'bearer', 'cookie'])(
+    'scrubs environment values whose names contain %s',
+    (fragment) => {
+      const scrub = createCredentialScrubber({
+        [`AI_CLI_${fragment.toUpperCase()}`]: 'wallet-secret-value',
+      });
+      expect(scrub('output wallet-secret-value')).toBe('output [REDACTED]');
+    },
+  );
+  it('escapes regex syntax in credential values', () => {
+    const scrub = createCredentialScrubber({ API_KEY: 'sk-a.b+c(d)' });
+    expect(scrub('sk-a.b+c(d) sk-axbcccd')).toBe('[REDACTED] sk-axbcccd');
+  });
+  it('preserves system error fields while scrubbing extra properties and cycles', () => {
+    const error = Object.assign(new Error('connection refused'), {
+      code: 'ECONNREFUSED',
+      errno: -61,
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 4000,
+      requestUrl: 'https://proxy.test/secret-key',
+    });
+    Object.assign(error, { self: error });
+    const scrubbed = scrubCredentials(
+      error,
+      createCredentialScrubber({ API_KEY: 'secret-key' }),
+    );
+    expect(scrubbed).toMatchObject({
+      code: 'ECONNREFUSED',
+      errno: -61,
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 4000,
+      requestUrl: 'https://proxy.test/[REDACTED]',
+      self: scrubbed,
+    });
+    expect(error.requestUrl).toContain('secret-key');
+  });
+  it('preserves aggregate errors and shared references', () => {
+    const cause = new Error('secret-key');
+    const error = new AggregateError([cause], 'secret-key aggregate', {
+      cause,
+    });
+    error.errors.push(error);
+    const scrubbed = scrubCredentials(
+      error,
+      createCredentialScrubber({ API_KEY: 'secret-key' }),
+    );
+    expect(scrubbed).toBeInstanceOf(AggregateError);
+    expect(scrubbed.message).toBe('[REDACTED] aggregate');
+    expect(scrubbed.errors[0]).toBe(scrubbed.cause);
+    expect(scrubbed.errors[0].message).toBe('[REDACTED]');
+    expect(scrubbed.errors[1]).toBe(scrubbed);
+  });
   it('scrubs multiple credential values, longest first', () => {
     const scrub = createCredentialScrubber({
       LITELLM_API_KEY: 'sk-two-short-key',

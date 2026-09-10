@@ -571,6 +571,36 @@ describe('createAgentRunner', () => {
       scoringMocks.postScores.mockResolvedValue(undefined);
     });
 
+    it('rejects provider-native options before the legacy Claude fallback', async () => {
+      const adapter: ProviderAdapter<{ nativeOption: string }, string> = {
+        name: 'custom',
+        async *run() {
+          yield resultMessage;
+        },
+      };
+      const runner = createAgentRunner({ adapter });
+      await expect(
+        runner.judge(judgeRunResult, {
+          ...judgeConfig,
+          queryOptions: { nativeOption: 'not-Claude' },
+        }),
+      ).rejects.toThrow('must implement runStructured()');
+      expect(judgeMocks.executeJudge).not.toHaveBeenCalled();
+    });
+    it('continues to accept Claude judge options on the Claude adapter', async () => {
+      const runner = createAgentRunner();
+      await runner.judge(judgeRunResult, {
+        ...judgeConfig,
+        queryOptions: { model: 'claude-test' },
+      });
+      expect(judgeMocks.executeJudge).toHaveBeenCalledWith(
+        judgeRunResult,
+        expect.objectContaining({ queryOptions: { model: 'claude-test' } }),
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
     it('returns the judge evaluation result', async () => {
       const { adapter } = createMockAdapter();
       const runner = createAgentRunner({ adapter });

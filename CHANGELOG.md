@@ -15,11 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Apply the `on-success` Docker cleanup policy uniformly: adapters keep the container unless the run completed with a successful result.
-- Take provider option defaults from `adapter.defaultOptions` only; the Claude adapter owns the isolated `settingSources: []` default.
+- **Breaking for custom Claude-backed adapters:** the runner no longer injects `settingSources: []`. Add `defaultOptions: { settingSources: [] }` to custom adapters to preserve SDK-settings isolation. The built-in Claude adapter keeps this default.
+- Reject judge `queryOptions` for non-Claude adapters without `runStructured()` instead of forwarding provider-native options to the legacy Claude judge. Use a separate Claude runner for customized Claude judging.
+- Drop cumulative output from pi progress messages, coalesce adjacent queued updates for the same tool call, and omit heartbeats from judge transcripts.
 
 ### Fixed
 
-- Scrub configured credential values of at least eight characters from pi messages, errors, telemetry, and judge inputs, including nested error causes.
+- Scrub exact environment values of at least eight characters whose names match recognized sensitive fragments from pi messages and errors, Docker bridge execution errors, and judge inputs. Pi message telemetry receives scrubbed output; arbitrary names, short or encoded values, and task prompt telemetry are not covered by this heuristic.
+- Share sensitive-name fragments with key-based redaction, including wallet SRPs, mnemonics, and passphrases; preserve system error fields and aggregate causes when scrubbing.
+- Preserve explicitly mapped pi Docker working directories instead of replacing them with the container default.
+- Preserve abort identity when Docker client close wins the event race so cancelled startup still attempts container removal.
 - Keep scrubbed DOMExceptions as real DOMExceptions so telemetry span finalization cannot throw on abort errors.
 
 ## [0.3.1]

@@ -1,4 +1,5 @@
-const SENSITIVE_KEYS = [
+/** Shared sensitive-name fragments for key and environment-value redaction. */
+export const SENSITIVE_KEYS = [
   'password',
   'passphrase',
   'secret',
