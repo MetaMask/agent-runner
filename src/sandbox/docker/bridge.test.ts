@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { PI_BRIDGE_RUNTIME } from '../../adapters/pi/pi-bridge-runtime.js';
+import { PI_SDK_VERSION } from '../../adapters/pi/pi-runtime.js';
 import {
   DockerSandboxError,
   DockerSandboxProtocolError,
 } from '../../errors.js';
-import { PI_SDK_VERSION } from '../../pi-runtime.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   parseBridgeEvent,
@@ -13,7 +14,6 @@ import {
 import {
   BRIDGE_SDK_PACKAGE_NAME,
   CLAUDE_BRIDGE_RUNTIME,
-  PI_BRIDGE_RUNTIME,
   DEFAULT_REMOTE_BRIDGE_DIR,
   DEFAULT_REMOTE_BRIDGE_FILE,
   MAX_BRIDGE_LINE_LENGTH,
@@ -256,7 +256,9 @@ describe('bootstrapDockerClaudeBridge', () => {
         config: makeConfig(),
         commandRunner: runner,
       }),
-    ).rejects.toThrow(/Failed to copy runtime file pi-runtime\.mjs/u);
+    ).rejects.toThrow(
+      /Failed to copy runtime file adapters\/pi\/pi-runtime\.mjs/u,
+    );
   });
 
   it('executes preflight, mkdir, cp, package.json, and npm install in order', async () => {

@@ -11,7 +11,6 @@ import {
   DockerSandboxError,
   DockerSandboxProtocolError,
 } from '../../errors.js';
-import { PI_SDK_VERSION } from '../../pi-runtime.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   parseBridgeEvent,
@@ -93,23 +92,6 @@ export const CLAUDE_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
   hostRoot: 'container',
   /** Resolves the installed Claude SDK version. */
   resolveVersion: readHostSdkVersion,
-};
-
-/** Pi runtime descriptor for the standalone Pi bridge. */
-export const PI_BRIDGE_RUNTIME: DockerBridgeRuntimeDescriptor = {
-  id: 'pi',
-  packageName: '@earendil-works/pi-coding-agent',
-  remoteBridgeFile: 'sandbox/container/pi-bridge.mjs',
-  hostRoot: 'dist',
-  files: ['pi-runtime.mjs', 'credential-redactor.mjs', 'message-parser.mjs'],
-  /**
-   * Returns the architecture-locked Pi version.
-   *
-   * @returns The locked Pi SDK version.
-   */
-  resolveVersion: () => PI_SDK_VERSION,
-  minNodeVersion: '22.19.0',
-  exactVersion: PI_SDK_VERSION,
 };
 
 /**
@@ -297,13 +279,19 @@ export async function bootstrapDockerBridge(
     input.runtime,
   );
 
+  const remoteDirectories = new Set([
+    path.posix.dirname(remoteBridgePath),
+    ...(input.runtime.files ?? []).map((file) =>
+      path.posix.dirname(`${remoteBridgeDir}/${file}`),
+    ),
+  ]);
   await runDockerExec(
     runner,
     sandbox.containerName,
     [
       'sh',
       '-lc',
-      `mkdir -p ${shellEscape(path.posix.dirname(remoteBridgePath))}`,
+      `mkdir -p ${[...remoteDirectories].map(shellEscape).join(' ')}`,
     ],
     `prepare bridge directory (${remoteBridgeDir})`,
   );

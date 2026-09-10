@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ run: vi.fn() }));
-vi.mock('../../pi-runtime.js', () => ({ runPiSession: mocks.run }));
+vi.mock('../../adapters/pi/pi-runtime.js', () => ({ runPiSession: mocks.run }));
 
 describe('pi standalone entry point', () => {
   const oldCode = process.exitCode;

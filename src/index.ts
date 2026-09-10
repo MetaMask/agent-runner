@@ -1,10 +1,10 @@
-export { createPiAdapter } from './adapters/pi-adapter.js';
+export { createPiAdapter } from './adapters/pi/pi-adapter.js';
 export { createClaudeAdapter } from './adapters/claude-adapter.js';
 export type {
   PiQueryOptions,
   PiToolName,
   PiModelCost,
-} from './adapters/pi-types.js';
+} from './adapters/pi/pi-types.js';
 export type {
   ProviderAdapter,
   RunConfig,

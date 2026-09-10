@@ -6,9 +6,9 @@ import type {
 } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { AgentMessage } from '../../types.js';
 import { assertPiNodeVersion, runPiSession } from './pi-runtime.js';
 import type { PiSessionFactory } from './pi-runtime.js';
-import type { AgentMessage } from './types.js';
 
 function fakeSession(
   run: (emit: (event: AgentSessionEvent) => void) => Promise<void> | void,

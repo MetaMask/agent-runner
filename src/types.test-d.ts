@@ -1,8 +1,8 @@
 import { expectTypeOf } from 'vitest';
 
 import { createClaudeAdapter } from './adapters/claude-adapter.js';
-import { createPiAdapter } from './adapters/pi-adapter.js';
-import type { PiQueryOptions } from './adapters/pi-types.js';
+import { createPiAdapter } from './adapters/pi/pi-adapter.js';
+import type { PiQueryOptions } from './adapters/pi/pi-types.js';
 import { createAgentRunner } from './runner.js';
 import type {
   AgentMessage,

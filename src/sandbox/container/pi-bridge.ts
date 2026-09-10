@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { runPiSession } from '../../adapters/pi/pi-runtime.js';
+import type { PiStructuredOutput } from '../../adapters/pi/pi-runtime.js';
 import {
   createCredentialScrubber,
   scrubCredentials,
 } from '../../credential-redactor.js';
-import { runPiSession } from '../../pi-runtime.js';
-import type { PiStructuredOutput } from '../../pi-runtime.js';
 
 /**
  * Runs the container protocol using the same pi implementation as direct runs.

@@ -1,25 +1,23 @@
 import {
   createCredentialScrubber,
   scrubCredentials,
-} from '../credential-redactor.js';
+} from '../../credential-redactor.js';
+import { runDockerBridge } from '../../sandbox/docker/bridge.js';
+import { createDefaultDockerCommandRunner } from '../../sandbox/docker/command-runner.js';
+import { createDockerSandbox } from '../../sandbox/docker/lifecycle.js';
+import {
+  normalizeDockerSandboxConfig,
+  prepareDockerSandboxRequest,
+} from '../../sandbox/docker/options.js';
+import { shouldCloseSandbox } from '../../sandbox/docker/utils.js';
+import type { AgentMessage, ProviderAdapter, RunConfig } from '../../types.js';
+import { PI_BRIDGE_RUNTIME } from './pi-bridge-runtime.js';
 import {
   runPiSession,
   validatePiOptions,
   PI_FORWARD_ENV,
-} from '../pi-runtime.js';
-import type { PiStructuredOutput } from '../pi-runtime.js';
-import {
-  runDockerBridge,
-  PI_BRIDGE_RUNTIME,
-} from '../sandbox/docker/bridge.js';
-import { createDefaultDockerCommandRunner } from '../sandbox/docker/command-runner.js';
-import { createDockerSandbox } from '../sandbox/docker/lifecycle.js';
-import {
-  normalizeDockerSandboxConfig,
-  prepareDockerSandboxRequest,
-} from '../sandbox/docker/options.js';
-import { shouldCloseSandbox } from '../sandbox/docker/utils.js';
-import type { AgentMessage, ProviderAdapter, RunConfig } from '../types.js';
+} from './pi-runtime.js';
+import type { PiStructuredOutput } from './pi-runtime.js';
 import type { PiQueryOptions } from './pi-types.js';
 
 /**

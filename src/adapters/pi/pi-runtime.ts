@@ -4,12 +4,12 @@ import type {
 } from '@earendil-works/pi-coding-agent';
 import path from 'node:path';
 
-import type { PiQueryOptions, PiToolName } from './adapters/pi-types.js';
 import {
   createCredentialScrubber,
   scrubCredentials,
-} from './credential-redactor.js';
-import type { AgentMessage, AgentResultMessage } from './types.js';
+} from '../../credential-redactor.js';
+import type { AgentMessage, AgentResultMessage } from '../../types.js';
+import type { PiQueryOptions, PiToolName } from './pi-types.js';
 
 /** Supported pi SDK version, also installed in Docker. */
 export const PI_SDK_VERSION = '0.83.0';

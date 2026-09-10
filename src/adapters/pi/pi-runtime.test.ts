@@ -2,14 +2,14 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createPiAdapter } from './adapters/pi-adapter.js';
+import { createAgentRunner } from '../../runner.js';
+import type { AgentMessage } from '../../types.js';
+import { createPiAdapter } from './pi-adapter.js';
 import {
   assertPiNodeVersion,
   runPiSession,
   validatePiOptions,
 } from './pi-runtime.js';
-import { createAgentRunner } from './runner.js';
-import type { AgentMessage } from './types.js';
 
 type Reply = {
   text?: string;

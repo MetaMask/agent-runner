@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- Test doubles infer their contracts from the runtime. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createAgentRunner } from '../runner.js';
+import { createAgentRunner } from '../../runner.js';
 import { createPiAdapter } from './pi-adapter.js';
 
 const mocks = vi.hoisted(() => ({
@@ -12,24 +12,23 @@ const mocks = vi.hoisted(() => ({
   direct: vi.fn(),
   command: vi.fn(),
 }));
-vi.mock('../pi-runtime.js', async (original) => ({
+vi.mock('./pi-runtime.js', async (original) => ({
   ...(await original<object>()),
   runPiSession: mocks.direct,
 }));
-vi.mock('../sandbox/docker/command-runner.js', () => ({
+vi.mock('../../sandbox/docker/command-runner.js', () => ({
   createDefaultDockerCommandRunner: () => ({ run: mocks.command }),
 }));
-vi.mock('../sandbox/docker/lifecycle.js', () => ({
+vi.mock('../../sandbox/docker/lifecycle.js', () => ({
   createDockerSandbox: mocks.create,
 }));
-vi.mock('../sandbox/docker/bridge.js', () => ({
-  PI_BRIDGE_RUNTIME: { id: 'pi' },
+vi.mock('../../sandbox/docker/bridge.js', () => ({
   runDockerBridge: mocks.bridge,
 }));
 
 function setup(
   messages: unknown[] = [{ type: 'result', success: true }],
-): import('../types.js').AgentRunner<
+): import('../../types.js').AgentRunner<
   import('./pi-types.js').PiQueryOptions,
   string
 > {

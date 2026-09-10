@@ -52,7 +52,7 @@ const config = createConfig([
   {
     files: [
       'src/adapters/*-adapter.ts',
-      'src/pi-runtime.ts',
+      'src/adapters/pi/*.ts',
       'src/credential-redactor.ts',
       'src/judge/executor.ts',
       'src/sandbox/**/*.ts',
