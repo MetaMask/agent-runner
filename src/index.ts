@@ -1,3 +1,16 @@
+export { createPiAdapter } from './adapters/pi/pi-adapter.js';
+export { createClaudeAdapter } from './adapters/claude-adapter.js';
+export type {
+  PiQueryOptions,
+  PiToolName,
+  PiModelCost,
+} from './adapters/pi/pi-types.js';
+export type {
+  ProviderAdapter,
+  RunConfig,
+  RunStructuredConfig,
+  ClaudeQueryOptions,
+} from './types.js';
 export { formatMessage } from './formatter.js';
 export { createAgentRunner } from './runner.js';
 export {

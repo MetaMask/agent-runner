@@ -333,6 +333,21 @@ async function runWithSpawn(
 
       const stderr = stderrAccumulator.getResult();
 
+      if (options?.signal?.aborted) {
+        // Preserve cancellation identity even if close arrives before the
+        // spawn AbortError event. Container startup cleanup relies on it.
+        settle(() => {
+          reject(
+            buildSpawnError(
+              command,
+              argsArray,
+              new DOMException('Host command aborted.', 'AbortError'),
+            ),
+          );
+        });
+        return;
+      }
+
       if (signal !== null || code === null) {
         // The signal branch covers both `signal !== null` and the rare
         // case where `code` is null without a signal (process was

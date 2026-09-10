@@ -1,6 +1,6 @@
 # @metamask/agent-runner
 
-Reusable TypeScript runner for `@anthropic-ai/claude-agent-sdk` with optional Langfuse/OpenTelemetry lifecycle support.
+Reusable TypeScript runner for the Claude Agent SDK and optional pi Agent SDK, with Langfuse/OpenTelemetry lifecycle support and Docker execution.
 
 This package wraps the Claude Agent SDK `query()` behind a provider adapter, normalizes the streamed message types into a discriminated union, collects result metadata, and exposes `flush()` / `shutdown()` so short-lived CI and eval processes do not lose telemetry spans.
 
@@ -79,7 +79,86 @@ const result = await runner.runAgent({
 console.log(result.sessionId, result.totalCostUsd, result.durationMs);
 ```
 
-By default the runner passes `settingSources: []` to the Claude SDK for isolated settings. Callers can override that in `defaultOptions` or per-run `options` when they intentionally want SDK settings loaded from other sources.
+By default the Claude adapter passes `settingSources: []` to the SDK for isolated settings. Callers can override that in `defaultOptions` or per-run `options` when they intentionally want SDK settings loaded from other sources.
+
+## Pi usage
+
+Pi is an optional peer dependency. Claude-only installations keep their existing Node requirements and do not need pi installed. Pi execution requires Node.js 22.19.0 or newer and the supported SDK version:
+
+```sh
+npm install @metamask/agent-runner @earendil-works/pi-coding-agent@0.83.0
+export LITELLM_BASE_URL=http://localhost:4000
+export LITELLM_API_KEY=your-key
+```
+
+The endpoint can include `/v1`; the adapter does not append it twice. Pi uses the OpenAI Chat Completions protocol through LiteLLM. Native pi providers and stored OAuth credentials are not loaded.
+
+```ts
+import { createAgentRunner, createPiAdapter } from '@metamask/agent-runner';
+
+const runner = createAgentRunner({
+  adapter: createPiAdapter(),
+  defaultOptions: {
+    model: 'your-litellm-model-alias',
+    tools: ['read', 'bash', 'edit', 'write'],
+    maxTurns: 10,
+  },
+  sandbox: { type: 'docker', image: 'node:22-bookworm' },
+});
+
+const result = await runner.runAgent({
+  prompt: 'Run the tests and fix failures.',
+  signal: AbortSignal.timeout(120_000),
+});
+
+const verdict = await runner.judge(result, {
+  rubric: 'Evaluate correctness.',
+  scoreFields: [{ name: 'correctness', min: 0, max: 10 }],
+});
+```
+
+The adapter determines the runner's option and prompt types. Existing Claude calls remain unchanged. Pi accepts string prompts and these package-owned options:
+
+| Option          | Behavior                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`         | Required LiteLLM model alias. Judging inherits it from runner defaults.                                                               |
+| `cwd`           | Absolute working directory, defaulting to `process.cwd()`. Docker maps it into the mounted workspace.                                 |
+| `systemPrompt`  | Replacement system prompt.                                                                                                            |
+| `tools`         | Exact built-in allowlist: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`. Defaults to the first four; `[]` disables all tools. |
+| `maxTurns`      | Positive integer limiting model turns, including their tool execution. Unlimited for task runs when omitted.                          |
+| `contextWindow` | Declared model context capacity, default 128000 tokens.                                                                               |
+| `maxTokens`     | Maximum output tokens per generation, default 8192. This is not a whole-run limit.                                                    |
+| `reasoning`     | Whether the model supports reasoning, default `false`.                                                                                |
+| `input`         | Declared model modalities, default `['text']`. This adapter currently accepts text prompts only.                                      |
+| `cost`          | Optional USD-per-million-token prices: `input`, `output`, `cacheRead`, `cacheWrite`.                                                  |
+
+Unknown options, command-scoped tool selectors, and Claude permission options are rejected before execution. They are never silently ignored. Direct pi tools execute with the host process's permissions; use Docker when isolation is required.
+
+Every pi run uses a fresh in-memory session. Settings, extensions, skills, context files, and prompt templates are not discovered. Automatic retries and compaction are disabled. Persistence, resume, custom tools, and interactive steering are not supported.
+
+Pi emits the same normalized messages and telemetry as Claude. Reaching `maxTurns` produces `result.success: false`; cancellation or a throwing `onMessage` callback returns a partial result and stops active work. Cost is omitted when pricing for consumed tokens is unknown. Explicit zero prices report zero.
+
+`runAgent({ signal })` and `judge(..., { signal })` cancel only pi runs. The Claude adapter does not observe `signal` yet, so passing one there is a silent no-op.
+
+### Pi sandbox and judge behavior
+
+Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, the runner performs no version check, so make sure the bridge directory already contains a compatible install. The Node version check applies inside the container, so a Node 20 host can still launch a supported pi container.
+
+Pi's default forwarded environment is `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`. An explicit `forwardEnv` list or `false` overrides it. Credentials are passed through the existing Docker environment-file mechanism, not serialized into query options. The existing Docker security caveats still apply: enabled tools can read credentials inside the container.
+
+Pi judging uses only a terminating `submit_judgment` tool and rejects caller tool customization. It inherits model settings, but not task tools or task turn limits. Its default limit is five turns. It uses the runner's sandbox; `judge(..., context, { sandbox: false, signal })` can override sandboxing and cancel the judge. A sandboxed judge starts its own container rather than reusing the task container.
+
+Claude judging remains unchanged. Custom adapters without `runStructured()` can still use the legacy Claude judge with default options, but supplying `queryOptions` now throws rather than forwarding provider-native options to Claude. Use a separate Claude runner to customize that fallback, or implement `runStructured()` for provider-owned judging. Custom adapters can also implement `getStructuredDefaults()` and `getRunMetadata()`.
+
+Migration for custom Claude-backed adapters: the runner no longer injects `settingSources: []`. Add `defaultOptions: { settingSources: [] }` to your adapter to preserve SDK-settings isolation. Without it, the SDK may load user/project settings and hooks. Adapter defaults are merged under runner defaults and per-run options; the built-in Claude adapter retains its isolated default.
+
+To run the local-protocol Docker smoke test after building:
+
+```sh
+RUN_DOCKER_TESTS=1 yarn vitest run src/sandbox/docker/pi-integration.test.ts --coverage.enabled=false
+```
+
+It requires a working Docker daemon and `host.docker.internal` connectivity, but no external model credentials.
 
 ## Telemetry usage
 
@@ -203,6 +282,12 @@ agent-runner (root session span)
 
 When `redact: true` is set on telemetry config, prompts and tool I/O are replaced with `[REDACTED]` in spans. Sensitive keys (`password`, `secret`, `srp`, `mnemonic`, `privatekey`, `token`, `apikey`, etc.) are recursively redacted from tool inputs regardless of the redact flag.
 
+#### Automatic credential scrubbing
+
+Pi messages and errors, Docker bridge execution errors, and judge inputs scrub exact environment values of at least eight characters when their variable names contain a known sensitive fragment. These include the sensitive-key list above plus `key`, `pass`, `auth`, `bearer`, and `cookie`, covering names such as `AI_CLI_SRP`, `SEED_PHRASE`, and `MNEMONIC`. Pi output scrubbing occurs before message callbacks, result collection, and message telemetry.
+
+This is a name-based heuristic, not a guarantee that all secrets are removed. Short values, unrecognized variable names, transformed/encoded values, and secrets unavailable to the scrubbing process are not covered. The telemetry redactor below remains useful for application-specific values and span inputs, including task prompts. Key-based redaction hides values under sensitive object keys; automatic scrubbing removes recognized environment values even inside free-form output.
+
 #### Value-level redaction
 
 For full-fidelity traces that still strip secret values, provide a `redactor` function. It receives each string leaf of span input/output (the prompt, generation input/output, tool inputs, tool results, and the final output) and returns a scrubbed string. Structure is preserved: for tool inputs the redactor is applied recursively to string leaves only, so the surrounding command and argument shape stay intact.
@@ -277,7 +362,7 @@ The run loop catches all errors and returns them in the result rather than throw
 
 ## Docker sandbox
 
-The Claude adapter can execute agent runs inside a Docker container instead of
+The Claude and pi adapters can execute agent runs inside a Docker container instead of
 the host process. This isolates filesystem writes, environment variables, and
 spawned subprocesses (including the Claude Agent SDK's own tools) from the
 host. The sandbox is opt-in: when no `sandbox` is configured the adapter runs
@@ -347,7 +432,7 @@ const result = await runner.runAgent({
 | `shmSize`          | `string`                              | Size of `/dev/shm` (e.g. `512m`, `2g`).                                                                                                                  |
 | `unsafeDockerArgs` | `string[]`                            | Extra raw arguments forwarded to `docker run`. Not validated.                                                                                            |
 | `setupCommands`    | `string[]`                            | Shell commands executed inside the container before the agent starts. Useful for installing extra dependencies or seeding state.                         |
-| `cleanup`          | `'always' \| 'on-success' \| 'never'` | When to remove the container. Defaults to `'always'`. `'on-success'` keeps the container on failure for inspection.                                      |
+| `cleanup`          | `'always' \| 'on-success' \| 'never'` | When to remove the container. Defaults to `'always'`. `'on-success'` keeps the container unless the run completed with a successful result.              |
 | `bridge`           | `DockerSandboxBridgeConfig`           | Bridge runtime options: `install`, `nodeCommand`, `npmCommand`, `sdkVersion`. Defaults install the host's installed Claude Agent SDK version on the fly. |
 
 `SandboxConfig` is a discriminated union on `type`; today only `'docker'`

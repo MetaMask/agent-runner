@@ -230,12 +230,7 @@ describe('createDefaultDockerCommandRunner', () => {
     );
 
     expect(error).toBeInstanceOf(DockerSandboxError);
-    // Either the `error` event (AbortError) or the `close` signal
-    // branch can win the race; both produce a sandbox error pointing
-    // back at the failed spawn or signal termination.
-    expect((error as Error).message).toMatch(
-      /Failed to spawn host command|terminated by signal/u,
-    );
+    expect(error).toMatchObject({ cause: { name: 'AbortError' } });
   });
 
   it('rejects immediately when the signal is already aborted', async () => {

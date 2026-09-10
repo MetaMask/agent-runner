@@ -780,6 +780,17 @@ describe('createMessageHandler', () => {
     expect(sessionSpan?.end).toHaveBeenCalledOnce();
   });
 
+  it('recordError keeps DOMExceptions finalizable and clears the session span', () => {
+    const handler = createHandler();
+    handler.handleMessage({ type: 'init', sessionId: 'session-1' });
+
+    handler.recordError(new DOMException('aborted', 'AbortError'));
+    handler.finalizePendingTools();
+
+    expect(() => handler.finalizeSessionSpan()).not.toThrow();
+    expect(handler.getState().sessionSpan).toBeUndefined();
+  });
+
   it('recordError redacts error output when redact is enabled', () => {
     const handler = createHandler({ redact: true });
     handler.handleMessage({ type: 'init', sessionId: 'session-1' });

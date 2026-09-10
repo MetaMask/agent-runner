@@ -176,7 +176,7 @@ describe('executeJudge', () => {
     });
   });
 
-  it('formats all message types in the transcript prompt', async () => {
+  it('formats evidence but omits progress heartbeats from the transcript prompt', async () => {
     const judgeOutput = JSON.stringify({
       quality: 7,
       accuracy: 4,
@@ -204,7 +204,8 @@ describe('executeJudge', () => {
     expect(prompt).toContain('file.txt');
     expect(prompt).toContain('[ERROR] not found');
     expect(prompt).toContain('status');
-    expect(prompt).toContain('Bash (3s)');
+    expect(prompt).not.toContain('Bash (3s)');
+    expect(prompt).not.toContain('tool_progress');
     expect(prompt).toContain('Ran ls command');
     expect(prompt).toContain('rate_limited');
     expect(prompt).toContain('success:');
