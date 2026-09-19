@@ -246,7 +246,10 @@ async function createSession(
   modelRuntime.registerProvider('litellm', {
     name: 'LiteLLM',
     baseUrl: url.href.replace(/\/$/u, ''),
-    apiKey: '$LITELLM_API_KEY',
+    // Credentials come from the environment only (validated above). Previously
+    // the env var name was passed through as a literal string, so that string —
+    // not the real key — was sent as the bearer token and auth failed silently.
+    apiKey: process.env.LITELLM_API_KEY,
     api: 'openai-completions',
     authHeader: true,
     models: [
