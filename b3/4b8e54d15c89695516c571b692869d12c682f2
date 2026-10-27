@@ -1,0 +1,41 @@
+src/types.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 425
+CHANGELOG.md
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 24
+src/telemetry/trace-name.test.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 1-33,36-104
+  s_7dd8a5e2c00ea7::t_56142948a1a903 34-35
+src/telemetry/tracing.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 53-54,108-109
+  s_7192bd5b1c9dc2::t_ebf267d572d27d 110
+src/telemetry/message-handler.test.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 112-116,668,678-681,749,759
+src/telemetry/message-handler.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 49,169,248,255,289
+src/telemetry/tracing.test.ts
+  s_7192bd5b1c9dc2::t_e3aeaafdf8a789 104,112,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b34b8e54d15c89695516c571b692869d12c682f2",
+  "prompts": {},
+  "sessions": {
+    "s_7192bd5b1c9dc2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e826628feffe5Tn3luzdn2QkxI",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    },
+    "s_7dd8a5e2c00ea7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e817f9c3affe3xGtccpl852XY5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
