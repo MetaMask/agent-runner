@@ -1,0 +1,19 @@
+package.json
+  s_7192bd5b1c9dc2::t_81be2aa6de6b4c 117-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f82a6e58b975b15540bbfa6af94811c357a83aa5",
+  "prompts": {},
+  "sessions": {
+    "s_7192bd5b1c9dc2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e826628feffe5Tn3luzdn2QkxI",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
