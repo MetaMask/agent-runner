@@ -109,7 +109,11 @@ describe('createMessageHandler', () => {
     });
 
     expect(tracingMocks.traceSpan).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: 'session-1', userId: 'user-1' }),
+      expect.objectContaining({
+        sessionId: 'session-1',
+        userId: 'user-1',
+        traceName: 'agent-runner',
+      }),
       expect.any(Function),
     );
     expect(tracingMocks.createSessionSpan).toHaveBeenCalledWith(
@@ -661,7 +665,7 @@ describe('createMessageHandler', () => {
     expect(tracingMocks.createSessionSpan).not.toHaveBeenCalled();
   });
 
-  it('propagates custom traceName to createSessionSpan', () => {
+  it('propagates custom traceName to the root observation and trace context', () => {
     const handler = createHandler({ traceName: 'my-eval-trace' });
     handler.handleMessage({ type: 'init', sessionId: 'session-1' });
 
@@ -670,6 +674,10 @@ describe('createMessageHandler', () => {
       'initial prompt',
       expect.any(Object),
       false,
+    );
+    expect(tracingMocks.traceSpan).toHaveBeenCalledWith(
+      expect.objectContaining({ traceName: 'my-eval-trace' }),
+      expect.any(Function),
     );
   });
 
@@ -738,6 +746,7 @@ describe('createMessageHandler', () => {
 
   it('propagates trace attributes on generation spans', () => {
     const handler = createHandler({
+      traceName: 'my-eval-trace',
       traceTags: ['eval'],
       traceVersion: '2.0.0',
     });
@@ -747,6 +756,7 @@ describe('createMessageHandler', () => {
     const generationTraceCall = tracingMocks.traceSpan.mock.calls[1];
     expect(generationTraceCall?.[0]).toStrictEqual(
       expect.objectContaining({
+        traceName: 'my-eval-trace',
         tags: ['eval'],
         version: '2.0.0',
       }),

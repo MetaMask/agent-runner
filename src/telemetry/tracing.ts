@@ -50,6 +50,8 @@ export type TraceAttributes = {
   sessionId: string | undefined;
   /** User identifier for trace attribution. */
   userId: string;
+  /** Trace name shared by all observations in the run. */
+  traceName?: string | undefined;
   /** Arbitrary metadata attached to the trace. */
   metadata?: Record<string, string> | undefined;
   /** Tags for trace filtering and categorisation. */
@@ -102,6 +104,9 @@ export function traceSpan(attrs: TraceAttributes, fn: () => void): void {
     }
     if (attrs.version !== undefined) {
       propagated.version = attrs.version;
+    }
+    if (attrs.traceName !== undefined) {
+      propagated.traceName = attrs.traceName;
     }
     propagateAttributes(propagated, fn);
   } catch {

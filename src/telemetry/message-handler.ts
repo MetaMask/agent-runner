@@ -46,7 +46,7 @@ export type MessageHandlerConfig = {
    */
   initialSessionId: string | undefined;
   /**
-   * Name for the root Langfuse trace observation.
+   * Name for the Langfuse trace and its root observation.
    */
   traceName?: string | undefined;
   /**
@@ -166,6 +166,7 @@ export function createMessageHandler(
   config: MessageHandlerConfig,
 ): MessageHandler {
   const scrubCredential = createCredentialScrubber();
+  const traceName = config.traceName ?? 'agent-runner';
   /**
    * Applies credential redaction followed by the caller's redactor.
    *
@@ -244,13 +245,14 @@ export function createMessageHandler(
       {
         sessionId: state.langfuseSessionId,
         userId: config.userId,
+        traceName,
         metadata,
         tags: config.traceTags,
         version: config.traceVersion,
       },
       () => {
         const session = createSessionSpan(
-          config.traceName ?? 'agent-runner',
+          traceName,
           config.redact ? config.prompt : scrubText(config.prompt),
           {
             model: message.model ?? config.model,
@@ -284,6 +286,7 @@ export function createMessageHandler(
       {
         sessionId: state.langfuseSessionId,
         userId: config.userId,
+        traceName,
         metadata: config.traceMetadata,
         tags: config.traceTags,
         version: config.traceVersion,
