@@ -21,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Propagate the configured trace name to root, generation, and tool observations so Langfuse v4 displays named traces; use `agent-runner` when no name is configured.
 - Scrub exact environment values of at least eight characters whose names match recognized sensitive fragments from pi messages and errors, Docker bridge execution errors, and judge inputs. Pi message telemetry receives scrubbed output; arbitrary names, short or encoded values, and task prompt telemetry are not covered by this heuristic.
 - Share sensitive-name fragments with key-based redaction, including wallet SRPs, mnemonics, and passphrases; preserve system error fields and aggregate causes when scrubbing.
 - Preserve explicitly mapped pi Docker working directories instead of replacing them with the container default.
