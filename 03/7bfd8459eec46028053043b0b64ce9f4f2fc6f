@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_7192bd5b1c9dc2::t_24bd063a219c49 17
+package.json
+  s_7192bd5b1c9dc2::t_a9214998323c15 55
+yarn.lock
+  s_7192bd5b1c9dc2::t_9bbfb202a6a026 15-17,22-24,29-31,36-38,43-45,50-52,57-59,64-66,71-73,75-82,104,1257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "037bfd8459eec46028053043b0b64ce9f4f2fc6f",
+  "prompts": {},
+  "sessions": {
+    "s_7192bd5b1c9dc2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e826628feffe5Tn3luzdn2QkxI",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
