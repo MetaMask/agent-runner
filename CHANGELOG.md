@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Upgrade `@anthropic-ai/claude-agent-sdk` to `^0.3.310`.
 - Apply the `on-success` Docker cleanup policy uniformly: adapters keep the container unless the run completed with a successful result.
 - **Breaking for custom Claude-backed adapters:** the runner no longer injects `settingSources: []`. Add `defaultOptions: { settingSources: [] }` to custom adapters to preserve SDK-settings isolation. The built-in Claude adapter keeps this default.
 - Reject judge `queryOptions` for non-Claude adapters without `runStructured()` instead of forwarding provider-native options to the legacy Claude judge. Use a separate Claude runner for customized Claude judging.
