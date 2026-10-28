@@ -5,9 +5,7 @@ export default defineConfig({
     watch: false,
     include: ['src/**/*.test.ts'],
     coverage: {
-      // Pi's SDK integration tests require Node >=22.19. Measure the full
-      // coverage contract on supported pi runtimes; still run Claude tests on 20.
-      enabled: Number(process.versions.node.split('.')[0]) >= 22,
+      enabled: true,
       provider: 'istanbul',
       include: [
         'src/**/*.ts',

@@ -23,7 +23,7 @@ let requests: Record<string, any>[];
 let reply: Reply;
 let hanging = false;
 
-// The SDK itself requires Node >=22.19; Claude compatibility is tested on Node 20.
+// The SDK itself requires Node >=22.19; integration runs on supported runtimes.
 describe.skipIf(Number(process.versions.node.split('.')[0]) < 22)(
   'pi integration',
   () => {

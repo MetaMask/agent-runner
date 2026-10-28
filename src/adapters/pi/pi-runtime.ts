@@ -62,9 +62,7 @@ export function assertPiNodeVersion(version = process.versions.node): void {
     .split('.')
     .map(Number);
   if (major < 22 || (major === 22 && minor < 19)) {
-    throw new Error(
-      'Pi requires Node.js >=22.19.0. Claude-only runs still support Node 20.',
-    );
+    throw new Error('Pi requires Node.js >=22.19.0.');
   }
 }
 

@@ -134,9 +134,7 @@ async function* runPi(
                 signal:
                   commandOptions?.signal === undefined
                     ? config.signal
-                    : // Pi execution requires Node >=22.19; Claude never uses this path.
-                      // eslint-disable-next-line n/no-unsupported-features/node-builtins
-                      AbortSignal.any([config.signal, commandOptions.signal]),
+                    : AbortSignal.any([config.signal, commandOptions.signal]),
               }),
         }),
     };
