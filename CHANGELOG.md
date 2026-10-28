@@ -9,11 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0]
 
-### Uncategorized
-
-- chore(deps)!: patch critical and high vulnerabilities and drop Node 20 ([#33](https://github.com/MetaMask/agent-runner/pull/33))
-- chore(deps): upgrade @anthropic-ai/claude-agent-sdk to ^0.3.310 ([#31](https://github.com/MetaMask/agent-runner/pull/31))
-
 ### Added
 
 - feat: add optional pi agent SDK support
@@ -22,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- chore: upgrade @anthropic-ai/claude-agent-sdk to ^0.3.310 ([#31](https://github.com/MetaMask/agent-runner/pull/31))
 - Apply the `on-success` Docker cleanup policy uniformly: adapters keep the container unless the run completed with a successful result.
 - **Breaking for custom Claude-backed adapters:** the runner no longer injects `settingSources: []`. Add `defaultOptions: { settingSources: [] }` to custom adapters to preserve SDK-settings isolation. The built-in Claude adapter keeps this default.
 - Reject judge `queryOptions` for non-Claude adapters without `runStructured()` instead of forwarding provider-native options to the legacy Claude judge. Use a separate Claude runner for customized Claude judging.
@@ -29,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- chore: patch critical and high vulnerabilities and drop Node 20 ([#33](https://github.com/MetaMask/agent-runner/pull/33))
 - fix: propagate Langfuse trace names ([#32](https://github.com/MetaMask/agent-runner/pull/32))
 - fix: address pi adapter review findings
 - fix: make coverage deterministic and harden bridge message validation
