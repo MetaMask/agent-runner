@@ -1,0 +1,19 @@
+.github/workflows/publish-release.yml
+  s_7192bd5b1c9dc2::t_a0d895ecdf968c 51,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89e6e427715fda01bd8165831b38d39ff84974a3",
+  "prompts": {},
+  "sessions": {
+    "s_7192bd5b1c9dc2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e826628feffe5Tn3luzdn2QkxI",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "cryptotavares <joao.tavares@consensys.net>"
+    }
+  }
+}
