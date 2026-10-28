@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Uncategorized
+
+- chore(deps)!: patch critical and high vulnerabilities and drop Node 20 ([#33](https://github.com/MetaMask/agent-runner/pull/33))
+- chore(deps): upgrade @anthropic-ai/claude-agent-sdk to ^0.3.310 ([#31](https://github.com/MetaMask/agent-runner/pull/31))
+
 ### Added
 
+- feat: add optional pi agent SDK support
 - Optional pi Agent SDK adapter for isolated LiteLLM runs, Docker execution, structured judging, cancellation, and turn limits.
 - Provider-specific runner option types with backwards-compatible Claude defaults.
 
@@ -21,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- fix: propagate Langfuse trace names ([#32](https://github.com/MetaMask/agent-runner/pull/32))
+- fix: address pi adapter review findings
+- fix: make coverage deterministic and harden bridge message validation
+- fix: address PR #28 review findings
 - Scrub exact environment values of at least eight characters whose names match recognized sensitive fragments from pi messages and errors, Docker bridge execution errors, and judge inputs. Pi message telemetry receives scrubbed output; arbitrary names, short or encoded values, and task prompt telemetry are not covered by this heuristic.
 - Share sensitive-name fragments with key-based redaction, including wallet SRPs, mnemonics, and passphrases; preserve system error fields and aggregate causes when scrubbing.
 - Preserve explicitly mapped pi Docker working directories instead of replacing them with the container default.
@@ -78,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix: cleanup unused publish docs ([#8](https://github.com/MetaMask/agent-runner/pull/8))
 
-[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/MetaMask/agent-runner/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/MetaMask/agent-runner/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/MetaMask/agent-runner/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MetaMask/agent-runner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MetaMask/agent-runner/compare/v0.1.0...v0.2.0
