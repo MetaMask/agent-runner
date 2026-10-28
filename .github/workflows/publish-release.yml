@@ -48,13 +48,11 @@ jobs:
         with:
           name: publish-release-artifacts-${{ github.sha }}
       - name: Dry Run Publish
-        uses: MetaMask/action-npm-publish@v6
+        uses: MetaMask/action-npm-publish@v7
         with:
           dry-run: true
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           subteam: S042S7RE4AE # @metamask-npm-publishers
-        env:
-          SKIP_PREPACK: true
 
   publish-npm:
     name: Publish to NPM
@@ -75,7 +73,7 @@ jobs:
         with:
           name: publish-release-artifacts-${{ github.sha }}
       - name: Publish
-        uses: MetaMask/action-npm-publish@v6
+        uses: MetaMask/action-npm-publish@v7
         with:
           dry-run: false
           # This `NPM_TOKEN` is only needed to publish a package for the first
@@ -83,8 +81,6 @@ jobs:
           # this token in the `npm-publish` environment, then delete it after
           # the initial OIDC publish.
           npm-token: ${{ secrets.NPM_TOKEN }}
-        env:
-          SKIP_PREPACK: true
 
   publish-release:
     name: Publish to GitHub
