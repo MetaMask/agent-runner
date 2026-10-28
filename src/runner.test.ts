@@ -400,7 +400,7 @@ describe('createAgentRunner', () => {
 
     it('passes the runner-level sandbox through to the adapter', async () => {
       const { adapter, runCalls } = createSandboxAdapter();
-      const sandbox = dockerSandbox({ image: 'node:20' });
+      const sandbox = dockerSandbox({ image: 'node:22.23.4' });
       const runner = createAgentRunner({ adapter, sandbox });
 
       await runner.runAgent({ prompt: 'sandboxed run' });
@@ -409,7 +409,7 @@ describe('createAgentRunner', () => {
       const runConfig = runCalls[0] as RunConfig;
       expect(runConfig.sandbox).toStrictEqual({
         type: 'docker',
-        image: 'node:20',
+        image: 'node:22.23.4',
       });
     });
 
@@ -417,18 +417,18 @@ describe('createAgentRunner', () => {
       const { adapter, runCalls } = createSandboxAdapter();
       const runner = createAgentRunner({
         adapter,
-        sandbox: dockerSandbox({ image: 'node:20' }),
+        sandbox: dockerSandbox({ image: 'node:22.23.4' }),
       });
 
       await runner.runAgent({
         prompt: 'sandboxed run',
-        sandbox: dockerSandbox({ image: 'node:22' }),
+        sandbox: dockerSandbox({ image: 'node:24.22.1' }),
       });
 
       const runConfig = runCalls[0] as RunConfig;
       expect(runConfig.sandbox).toStrictEqual({
         type: 'docker',
-        image: 'node:22',
+        image: 'node:24.22.1',
       });
     });
 
@@ -436,7 +436,7 @@ describe('createAgentRunner', () => {
       const { adapter, runCalls } = createSandboxAdapter();
       const runner = createAgentRunner({
         adapter,
-        sandbox: dockerSandbox({ image: 'node:20' }),
+        sandbox: dockerSandbox({ image: 'node:22.23.4' }),
       });
 
       await runner.runAgent({ prompt: 'sandboxed run', sandbox: false });

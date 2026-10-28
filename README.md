@@ -6,6 +6,8 @@ This package wraps the Claude Agent SDK `query()` behind a provider adapter, nor
 
 ## Install
 
+Requires Node.js 22.23.4 or newer on the 22.x line, or Node.js 24.22.1 or newer. Node.js 20 is no longer supported. These minimums include the [October 2026 security fixes](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
+
 ```bash
 npm install @metamask/agent-runner
 ```
@@ -83,7 +85,7 @@ By default the Claude adapter passes `settingSources: []` to the SDK for isolate
 
 ## Pi usage
 
-Pi is an optional peer dependency. Claude-only installations keep their existing Node requirements and do not need pi installed. Pi execution requires Node.js 22.19.0 or newer and the supported SDK version:
+Pi is an optional peer dependency. Claude-only installations do not need pi installed. Pi uses the same supported Node.js versions as the runner and requires the supported SDK version:
 
 ```sh
 npm install @metamask/agent-runner @earendil-works/pi-coding-agent@0.83.0
@@ -103,7 +105,7 @@ const runner = createAgentRunner({
     tools: ['read', 'bash', 'edit', 'write'],
     maxTurns: 10,
   },
-  sandbox: { type: 'docker', image: 'node:22-bookworm' },
+  sandbox: { type: 'docker', image: 'node:22.23.4-bookworm' },
 });
 
 const result = await runner.runAgent({
@@ -142,7 +144,7 @@ Pi emits the same normalized messages and telemetry as Claude. Reaching `maxTurn
 
 ### Pi sandbox and judge behavior
 
-Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, the runner performs no version check, so make sure the bridge directory already contains a compatible install. The Node version check applies inside the container, so a Node 20 host can still launch a supported pi container.
+Docker installs pi 0.83.0 and copies the shared pi execution modules into the container. `bridge.sdkVersion`, if supplied, must match. With `bridge.install: false`, the runner performs no version check, so make sure the bridge directory already contains a compatible install. Use a supported, security-patched Node.js version on both the host and inside the container.
 
 Pi's default forwarded environment is `LITELLM_BASE_URL`, `LITELLM_API_KEY`, `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`. An explicit `forwardEnv` list or `false` overrides it. Credentials are passed through the existing Docker environment-file mechanism, not serialized into query options. The existing Docker security caveats still apply: enabled tools can read credentials inside the container.
 
@@ -378,7 +380,7 @@ import { createAgentRunner } from '@metamask/agent-runner';
 const runner = createAgentRunner({
   sandbox: {
     type: 'docker',
-    image: 'node:22-bookworm',
+    image: 'node:22.23.4-bookworm',
     workspace: {
       hostPath: process.cwd(),
       containerPath: '/workspace',
@@ -547,8 +549,8 @@ createAgentRunner({
 - The `docker` CLI must be on `PATH` and the user must be able to create
   containers. Rootless Docker, Podman with a `docker` shim, and remote
   daemons via `DOCKER_HOST` all work as long as the CLI obeys.
-- The container image must include a Node.js runtime compatible with the
-  Claude Agent SDK (Node 20+). The bridge installs the SDK via `npm`, so
+- The container image must include a supported, security-patched Node.js
+  runtime (22.23.4+ on 22.x, or 24.22.1+). The bridge installs the SDK via `npm`, so
   `npm` must also be available (override with `bridge.nodeCommand` /
   `bridge.npmCommand` if you ship a custom binary).
 - The bridge runs `npm install` on every fresh container by default. For

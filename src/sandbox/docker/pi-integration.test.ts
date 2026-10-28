@@ -59,7 +59,7 @@ describe.skipIf(process.env.RUN_DOCKER_TESTS !== '1')(
         defaultOptions: { model: 'test', tools: [] },
         sandbox: {
           type: 'docker',
-          image: 'node:22-bookworm',
+          image: 'node:22.23.4-bookworm',
           workspace: false,
           workdir: '/tmp',
           forwardEnv: false,
