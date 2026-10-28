@@ -422,7 +422,7 @@ export type AgentRunnerConfig<
  * Per-run telemetry attributes propagated to Langfuse traces.
  */
 export type AgentRunTelemetryAttributes = {
-  /** Name for the root Langfuse trace. */
+  /** Name for the Langfuse trace and its root observation. Defaults to `agent-runner`. */
   traceName?: string;
   /** User identifier propagated to traces. */
   userId?: string;

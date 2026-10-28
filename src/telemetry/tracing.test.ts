@@ -101,7 +101,7 @@ describe('tracing helpers', () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
-  it('traceSpan propagates metadata, tags, and version when provided', () => {
+  it('traceSpan propagates trace name, metadata, tags, and version when provided', () => {
     setLangfuseProcessor({ forceFlush: vi.fn(async () => undefined) });
     const callback = vi.fn();
 
@@ -109,6 +109,7 @@ describe('tracing helpers', () => {
       {
         sessionId: 'session-1',
         userId: 'user-1',
+        traceName: 'my-eval-trace',
         metadata: { repo: 'metamask' },
         tags: ['eval', 'ci'],
         version: '1.0.0',
@@ -120,6 +121,7 @@ describe('tracing helpers', () => {
       {
         sessionId: 'session-1',
         userId: 'user-1',
+        traceName: 'my-eval-trace',
         metadata: { repo: 'metamask' },
         tags: ['eval', 'ci'],
         version: '1.0.0',
